@@ -1208,11 +1208,9 @@ async function processImageWithOpenCV(dataUrl, fileName) {
             try {
                 // Calculate dimensions to resize to 1080px (longest side)
                 const maxSize = 1080;
-                let { width, height } = calculateResizeDimensions(img.width, img.height, maxSize);
-
-                // Create original canvas
+                let { width, height } = calculateResizeDimensions(img.width, img.height, maxSize);                // Create original canvas
                 originalImageCanvas = document.createElement('canvas');
-                const originalCtx = originalImageCanvas.getContext('2d');
+                const originalCtx = originalImageCanvas.getContext('2d', { willReadFrequently: true });
                 originalImageCanvas.width = width;
                 originalImageCanvas.height = height;
 
@@ -1267,10 +1265,8 @@ function calculateResizeDimensions(originalWidth, originalHeight, maxSize) {
 
     // Apply auto-enhancement (OpenCV-inspired algorithms)
 function applyAutoEnhancement() {
-    if (!originalImageData) return;
-
-    const canvas = enhancedImageCanvas;
-    const ctx = canvas.getContext('2d');
+    if (!originalImageData) return;    const canvas = enhancedImageCanvas;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     // Start with original image
     ctx.putImageData(originalImageData, 0, 0);
@@ -1421,7 +1417,7 @@ function adjustImageEnhancement() {
     document.getElementById('sharpnessValue').textContent = sharpness.toFixed(1);
     document.getElementById('saturationValue').textContent = saturation.toFixed(1);
 
-    const ctx = enhancedImageCanvas.getContext('2d');
+    const ctx = enhancedImageCanvas.getContext('2d', { willReadFrequently: true });
     ctx.putImageData(originalImageData, 0, 0);
 
     // Apply adjustments

@@ -731,6 +731,23 @@
             margin-top: 8px;
         }
 
+        .custom-size-input {
+            display: none;
+            margin-left: 10px;
+            width: 120px;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .custom-size-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
         /* ...existing code... */
 
 .inline-style-0 { min-width: 60px; align-self: flex-start; padding-top: 8px; }

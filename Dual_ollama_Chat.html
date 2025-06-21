@@ -75,15 +75,28 @@
                         <button class="btn" onclick="activateModel(2)" id="activateBtn2" disabled title="Activate Model 2">🚀 Activate</button>
                     </div>
                 </div>
-            </div>
-
-            <div class="config-row">
+            </div>            <div class="config-row">
                 <div class="config-group inline-style-6" >
                     <label for="systemPrompt"  class="inline-style-7">System Prompt:</label>
                     <textarea id="systemPrompt" 
                         placeholder="Enter system prompt to guide AI behavior..." 
                          class="inline-style-8"
                         title="System prompt that will be used for every conversation">You are a helpful AI assistant. You can analyze images, PDFs, and other files that users upload. Provide detailed, accurate, and helpful responses based on the content you see or read. Think twice before answering, then as a critic challenge the answer by reviewing the input prompt again, then give final answer!</textarea>
+                </div>
+            </div>
+
+            <div class="config-row">
+                <div class="config-group">
+                    <label for="imageScalingSelect">Image Scaling Resolution:</label>
+                    <select id="imageScalingSelect" title="Maximum resolution for uploaded images (longest side)" onchange="handleImageScalingChange()">
+                        <option value="1920">1920px (Full HD)</option>
+                        <option value="2560">2560px (WQHD)</option>
+                        <option value="3508" selected>3508px (A4 300DPI)</option>
+                        <option value="4096">4096px (4K)</option>
+                        <option value="5120">5120px (5K)</option>
+                        <option value="custom">Custom...</option>
+                    </select>
+                    <input type="number" id="customImageSize" placeholder="Custom size" min="512" max="8192" step="1" class="custom-size-input" title="Enter custom image size in pixels">
                 </div>
             </div>
 
@@ -185,9 +198,8 @@
                                 <div class="image-comparison-label">Original</div>
                                 <img id="originalImage" class="comparison-image" onclick="showImageModal(this.src)" alt="Original image">
                                 <div id="originalImageInfo" class="image-info"></div>
-                            </div>
-                            <div class="image-comparison-item">
-                                <div class="image-comparison-label">Enhanced (1080px)</div>
+                            </div>                            <div class="image-comparison-item">
+                                <div class="image-comparison-label">Enhanced (Dynamic)</div>
                                 <img id="enhancedImage" class="comparison-image" onclick="showImageModal(this.src)" alt="Enhanced image">
                                 <div id="enhancedImageInfo" class="image-info"></div>
                             </div>

@@ -1206,24 +1206,43 @@ async function handleFileUpload(event) {
                                         };
                                         reader.readAsDataURL(file);
                                     }
-                                }
-
-                                // New: OpenCV-inspired image processing with auto-resize to 1080px
+                                }                                // New: OpenCV-inspired image processing with configurable resolution
 async function processImageWithOpenCV(dataUrl, fileName) {
     return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = function() {
             try {
-                // Calculate dimensions to resize to 1080px (longest side)
-                const maxSize = 1080;
+                // Get configurable max size from UI
+                const maxSize = getImageScalingResolution();
+                
+                // Validate image size to prevent memory issues
+                if (!validateImageSize(img.width, img.height, maxSize)) {
+                    reject(new Error(`Image too large for processing. Maximum allowed area: ${maxSize * maxSize} pixels`));
+                    return;
+                }
+                
                 let { width, height } = calculateResizeDimensions(img.width, img.height, maxSize);                // Create original canvas
                 originalImageCanvas = document.createElement('canvas');
                 const originalCtx = originalImageCanvas.getContext('2d', { willReadFrequently: true });
-                originalImageCanvas.width = width;
-                originalImageCanvas.height = height;
+                originalImageCanvas.width = img.width;
+                originalImageCanvas.height = img.height;
 
-                // Draw resized original image
-                originalCtx.drawImage(img, 0, 0, width, height);
+                // Draw original image at full size first
+                originalCtx.drawImage(img, 0, 0);
+                  // Apply progressive resizing for better quality if needed
+                const reductionRatio = Math.min(width / img.width, height / img.height);
+                if (reductionRatio < 0.5) {
+                    console.log(`Using progressive resizing: ${img.width}×${img.height} → ${width}×${height} (ratio: ${reductionRatio.toFixed(2)})`);
+                    showOpenCVProcessingStatus('Applying progressive resizing for optimal quality...', false);
+                    progressiveResize(originalImageCanvas, width, height);
+                } else {
+                    // Direct resize for smaller reductions
+                    console.log(`Using direct resizing: ${img.width}×${img.height} → ${width}×${height} (ratio: ${reductionRatio.toFixed(2)})`);
+                    originalImageCanvas.width = width;
+                    originalImageCanvas.height = height;
+                    originalCtx.drawImage(img, 0, 0, width, height);
+                }
+                
                 originalImageData = originalCtx.getImageData(0, 0, width, height);
 
                 // Create enhanced canvas (start with copy of original)
@@ -1248,26 +1267,29 @@ async function processImageWithOpenCV(dataUrl, fileName) {
             img.onerror = () => reject(new Error('Failed to load image'));
             img.src = dataUrl;
         });
-    }
-
-    // Calculate resize dimensions maintaining aspect ratio
+    }    // Calculate resize dimensions maintaining aspect ratio
 function calculateResizeDimensions(originalWidth, originalHeight, maxSize) {
     if (originalWidth <= maxSize && originalHeight <= maxSize) {
+        console.log(`Image ${originalWidth}×${originalHeight} is within size limit (${maxSize}px), no resizing needed`);
         return { width: originalWidth, height: originalHeight };
     }
 
     const aspectRatio = originalWidth / originalHeight;
 
     if (originalWidth > originalHeight) {
-        return {
+        const newDimensions = {
             width: maxSize,
             height: Math.round(maxSize / aspectRatio)
         };
+        console.log(`Resizing landscape image: ${originalWidth}×${originalHeight} → ${newDimensions.width}×${newDimensions.height} (max: ${maxSize}px)`);
+        return newDimensions;
         } else {
-            return {
+            const newDimensions = {
                 width: Math.round(maxSize * aspectRatio),
                 height: maxSize
             };
+            console.log(`Resizing portrait image: ${originalWidth}×${originalHeight} → ${newDimensions.width}×${newDimensions.height} (max: ${maxSize}px)`);
+            return newDimensions;
         }
     }
 
@@ -1535,10 +1557,11 @@ function updateImageComparison(originalWidth, originalHeight, fileName) {
     document.getElementById('originalImage').src = originalImageCanvas.toDataURL();
     document.getElementById('enhancedImage').src = enhancedImageCanvas.toDataURL();
 
+    const maxSize = getImageScalingResolution();
     document.getElementById('originalImageInfo').textContent =
     `${originalWidth}×${originalHeight} → ${originalImageCanvas.width}×${originalImageCanvas.height}`;
     document.getElementById('enhancedImageInfo').textContent =
-    `${originalImageCanvas.width}×${originalImageCanvas.height} (Enhanced)`;
+    `${originalImageCanvas.width}×${originalImageCanvas.height} (Enhanced @ ${maxSize}px)`;
 
     document.getElementById('imageComparisonContainer').style.display = 'flex';
 }
@@ -1934,6 +1957,80 @@ function generateSpreadsheetPreviewHTML() {
 
     container.appendChild(table);
     return container.outerHTML;
+}
+
+// Get current image scaling resolution from UI
+function getImageScalingResolution() {
+    const select = document.getElementById('imageScalingSelect');
+    const customInput = document.getElementById('customImageSize');
+    
+    if (select.value === 'custom') {
+        const customSize = parseInt(customInput.value);
+        return (customSize && customSize >= 512 && customSize <= 8192) ? customSize : 1920;
+    }
+    
+    return parseInt(select.value) || 3508;
+}
+
+// Validate image size to prevent memory issues
+function validateImageSize(width, height, maxSize) {
+    const maxPixels = maxSize * maxSize;
+    const imagePixels = width * height;
+    
+    // Allow images up to maxSize^2 pixels
+    return imagePixels <= maxPixels;
+}
+
+// Handle image scaling resolution change
+function handleImageScalingChange() {
+    const select = document.getElementById('imageScalingSelect');
+    const customInput = document.getElementById('customImageSize');
+    
+    if (select.value === 'custom') {
+        customInput.style.display = 'inline-block';
+        customInput.focus();
+    } else {
+        customInput.style.display = 'none';
+    }
+}
+
+// Progressive resize for very large images (reduces in steps for better quality)
+function progressiveResize(sourceCanvas, targetWidth, targetHeight) {
+    const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+    let currentWidth = sourceCanvas.width;
+    let currentHeight = sourceCanvas.height;
+    
+    // If reduction is more than 50%, resize progressively
+    while (currentWidth > targetWidth * 2 || currentHeight > targetHeight * 2) {
+        currentWidth = Math.max(targetWidth, Math.floor(currentWidth * 0.7));
+        currentHeight = Math.max(targetHeight, Math.floor(currentHeight * 0.7));
+        
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+        tempCanvas.width = currentWidth;
+        tempCanvas.height = currentHeight;
+        
+        tempCtx.drawImage(sourceCanvas, 0, 0, currentWidth, currentHeight);
+        
+        // Copy back to source canvas
+        sourceCanvas.width = currentWidth;
+        sourceCanvas.height = currentHeight;
+        sourceCtx.drawImage(tempCanvas, 0, 0);
+    }
+    
+    // Final resize to exact target dimensions
+    if (currentWidth !== targetWidth || currentHeight !== targetHeight) {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+        tempCanvas.width = targetWidth;
+        tempCanvas.height = targetHeight;
+        
+        tempCtx.drawImage(sourceCanvas, 0, 0, targetWidth, targetHeight);
+        
+        sourceCanvas.width = targetWidth;
+        sourceCanvas.height = targetHeight;
+        sourceCtx.drawImage(tempCanvas, 0, 0);
+    }
 }
 
 // Auto-resize textarea

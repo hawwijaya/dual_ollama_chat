@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Scaling Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .custom-size-input { display: none; margin-left: 10px; width: 120px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; }
+        select, input { padding: 8px; margin: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Image Scaling Configuration Test</h1>
+    
+    <div class="test-section">
+        <h3>Image Scaling Resolution Settings</h3>
+        <label for="imageScalingSelect">Image Scaling Resolution:</label>
+        <select id="imageScalingSelect" onchange="handleImageScalingChange()">
+            <option value="1920">1920px (Full HD)</option>
+            <option value="2560">2560px (WQHD)</option>
+            <option value="3508" selected>3508px (A4 300DPI)</option>
+            <option value="4096">4096px (4K)</option>
+            <option value="5120">5120px (5K)</option>
+            <option value="custom">Custom...</option>
+        </select>
+        <input type="number" id="customImageSize" placeholder="Custom size" min="512" max="8192" step="1" class="custom-size-input">
+        
+        <div class="result">
+            <strong>Current Max Size:</strong> <span id="currentMaxSize">3508px</span>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Test Size Calculations</h3>
+        <label>Original Width:</label> <input type="number" id="testWidth" value="4000" min="1">
+        <label>Original Height:</label> <input type="number" id="testHeight" value="3000" min="1">
+        <button onclick="testCalculations()">Test Resize Calculation</button>
+        
+        <div class="result" id="testResults">
+            Results will appear here...
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Memory Validation Test</h3>
+        <button onclick="testValidation()">Test Common Image Sizes</button>
+        
+        <div class="result" id="validationResults">
+            Validation results will appear here...
+        </div>
+    </div>
+
+    <script>
+        // Copy the functions from the main JavaScript file for testing
+        
+        function getImageScalingResolution() {
+            const select = document.getElementById('imageScalingSelect');
+            const customInput = document.getElementById('customImageSize');
+            
+            if (select.value === 'custom') {
+                const customSize = parseInt(customInput.value);
+                return (customSize && customSize >= 512 && customSize <= 8192) ? customSize : 1920;
+            }
+            
+            return parseInt(select.value) || 3508;
+        }
+
+        function validateImageSize(width, height, maxSize) {
+            const maxPixels = maxSize * maxSize;
+            const imagePixels = width * height;
+            return imagePixels <= maxPixels;
+        }
+
+        function handleImageScalingChange() {
+            const select = document.getElementById('imageScalingSelect');
+            const customInput = document.getElementById('customImageSize');
+            
+            if (select.value === 'custom') {
+                customInput.style.display = 'inline-block';
+                customInput.focus();
+            } else {
+                customInput.style.display = 'none';
+            }
+            
+            // Update display
+            document.getElementById('currentMaxSize').textContent = getImageScalingResolution() + 'px';
+        }
+
+        function calculateResizeDimensions(originalWidth, originalHeight, maxSize) {
+            if (originalWidth <= maxSize && originalHeight <= maxSize) {
+                return { width: originalWidth, height: originalHeight };
+            }
+
+            const aspectRatio = originalWidth / originalHeight;
+
+            if (originalWidth > originalHeight) {
+                return {
+                    width: maxSize,
+                    height: Math.round(maxSize / aspectRatio)
+                };
+            } else {
+                return {
+                    width: Math.round(maxSize * aspectRatio),
+                    height: maxSize
+                };
+            }
+        }
+
+        function testCalculations() {
+            const width = parseInt(document.getElementById('testWidth').value);
+            const height = parseInt(document.getElementById('testHeight').value);
+            const maxSize = getImageScalingResolution();
+            
+            const result = calculateResizeDimensions(width, height, maxSize);
+            const reductionRatio = Math.min(result.width / width, result.height / height);
+            const isValid = validateImageSize(width, height, maxSize);
+            
+            document.getElementById('testResults').innerHTML = `
+                <strong>Input:</strong> ${width}×${height} (${(width * height / 1000000).toFixed(1)}MP)<br>
+                <strong>Max Size:</strong> ${maxSize}px<br>
+                <strong>Output:</strong> ${result.width}×${result.height} (${(result.width * result.height / 1000000).toFixed(1)}MP)<br>
+                <strong>Reduction Ratio:</strong> ${reductionRatio.toFixed(3)} ${reductionRatio < 0.5 ? '(Progressive resize recommended)' : '(Direct resize)'}<br>
+                <strong>Valid Size:</strong> ${isValid ? '✅ Yes' : '❌ No - Too large!'}
+            `;
+        }
+
+        function testValidation() {
+            const maxSize = getImageScalingResolution();
+            const testCases = [
+                { name: 'iPhone Photo', width: 4032, height: 3024 },
+                { name: 'DSLR Photo', width: 6000, height: 4000 },
+                { name: 'Small Image', width: 800, height: 600 },
+                { name: 'Ultra HD', width: 7680, height: 4320 },
+                { name: 'Large Scan', width: 8000, height: 6000 }
+            ];
+            
+            let results = `<strong>Testing with max size: ${maxSize}px</strong><br><br>`;
+            
+            testCases.forEach(test => {
+                const isValid = validateImageSize(test.width, test.height, maxSize);
+                const resized = calculateResizeDimensions(test.width, test.height, maxSize);
+                const reduction = Math.min(resized.width / test.width, resized.height / test.height);
+                
+                results += `<strong>${test.name}:</strong> ${test.width}×${test.height} → `;
+                results += `${resized.width}×${resized.height} `;
+                results += `${isValid ? '✅' : '❌'} `;
+                results += `(${(reduction * 100).toFixed(1)}% of original)<br>`;
+            });
+            
+            document.getElementById('validationResults').innerHTML = results;
+        }
+
+        // Update display on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            handleImageScalingChange();
+        });
+    </script>
+</body>
+</html>

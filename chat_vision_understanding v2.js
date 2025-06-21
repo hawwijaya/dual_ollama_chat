@@ -1322,7 +1322,173 @@ async function handleFileUpload(event) {
                                         };
                                         reader.readAsDataURL(file);
                                     }
-                                }                                // New: OpenCV-inspired image processing with configurable resolution
+                                }                                // Process CSV files
+async function processCSV(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const csvText = e.target.result;
+                
+                // Simple CSV parsing (handle quoted fields and commas)
+                const lines = csvText.split('\n').filter(line => line.trim());
+                const headers = parseCSVLine(lines[0]);
+                const rows = lines.slice(1).map(line => parseCSVLine(line));
+                
+                // Convert to structured data
+                const data = rows.map(row => {
+                    const obj = {};
+                    headers.forEach((header, index) => {
+                        obj[header] = row[index] || '';
+                    });
+                    return obj;
+                });
+                  // Store the data as array format for convertSpreadsheetToText
+                spreadsheetData = [headers, ...rows];
+                
+                // Set spreadsheet statistics
+                spreadsheetStats = {
+                    rows: data.length + 1, // +1 for header
+                    columns: headers.length,
+                    sheets: 1,
+                    sheetNames: ['Sheet1']
+                };
+                  console.log('CSV processed successfully:', spreadsheetData.summary);
+                resolve(spreadsheetData);
+            } catch (error) {
+                console.error('CSV processing error:', error);
+                reject(error);
+            }
+        };
+        reader.onerror = () => reject(new Error('Failed to read CSV file'));
+        reader.readAsText(file);
+    });
+}
+
+// Helper function to parse CSV line with proper handling of quoted fields
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    result.push(current.trim());
+    return result;
+}
+
+// Process Excel files (.xlsx, .xls)
+async function processExcel(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const fileName = file.name;
+                const fileSize = (file.size / 1024).toFixed(2);
+                
+                // Check if XLSX library is available
+                if (typeof XLSX === 'undefined') {
+                    console.warn('XLSX library not available, using basic info only');
+                    // Fallback to basic info
+                    spreadsheetData = [
+                        ['Excel File Information'],
+                        ['Filename', fileName],
+                        ['Size', fileSize + ' KB'],
+                        ['Note', 'XLSX library not loaded. Consider converting to CSV for full analysis.']
+                    ];
+                    
+                    spreadsheetStats = {
+                        rows: 4,
+                        columns: 2,
+                        sheets: 1,
+                        sheetNames: ['Info']
+                    };
+                    
+                    console.log('Excel file detected (basic mode):', fileName);
+                    resolve(spreadsheetData);
+                    return;
+                }
+                
+                // Use XLSX library to parse the Excel file
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Get all sheet names
+                const sheetNames = workbook.SheetNames;
+                console.log('Excel file detected:', fileName, 'with sheets:', sheetNames);
+                
+                // Process the first sheet (or all sheets if needed)
+                const firstSheetName = sheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // Convert worksheet to array of arrays
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+                
+                // Store the data
+                spreadsheetData = jsonData.length > 0 ? jsonData : [['No data found']];
+                
+                // Calculate statistics
+                const nonEmptyRows = spreadsheetData.filter(row => row.some(cell => cell !== '')).length;
+                const maxCols = Math.max(...spreadsheetData.map(row => row.length));
+                
+                spreadsheetStats = {
+                    rows: nonEmptyRows,
+                    columns: maxCols,
+                    sheets: sheetNames.length,
+                    sheetNames: sheetNames,
+                    fileName: fileName,
+                    fileSize: fileSize + ' KB'
+                };
+                
+                console.log('Excel processed successfully:', {
+                    file: fileName,
+                    sheets: sheetNames.length,
+                    rows: nonEmptyRows,
+                    cols: maxCols
+                });
+                
+                resolve(spreadsheetData);
+            } catch (error) {
+                console.error('Excel processing error:', error);
+                // Fallback to basic info on error
+                const fileName = file.name;
+                const fileSize = (file.size / 1024).toFixed(2);
+                
+                spreadsheetData = [
+                    ['Excel File Information'],
+                    ['Filename', fileName],
+                    ['Size', fileSize + ' KB'],
+                    ['Error', error.message],
+                    ['Note', 'Failed to process Excel file. Consider converting to CSV.']
+                ];
+                
+                spreadsheetStats = {
+                    rows: 5,
+                    columns: 2,
+                    sheets: 1,
+                    sheetNames: ['Error Info']
+                };
+                
+                resolve(spreadsheetData);
+            }
+        };
+        reader.onerror = () => reject(new Error('Failed to read Excel file'));
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+                                // New: OpenCV-inspired image processing with configurable resolution
 async function processImageWithOpenCV(dataUrl, fileName) {
     return new Promise((resolve, reject) => {
         const img = new Image();

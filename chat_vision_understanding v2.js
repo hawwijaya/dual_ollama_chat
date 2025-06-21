@@ -136,12 +136,19 @@ async function updateActiveModelsDisplay() {
             }
         }
 
-async function detectModels() {
+async function detectModels(event = null) {
     updateBaseUrl();
-    const btn = event.target;
-    const originalText = btn.textContent;
-    btn.textContent = '🔍 Detecting...';
-    btn.disabled = true;
+    
+    // Handle case where function is called without an event (programmatically)
+    let btn = null;
+    let originalText = '';
+    
+    if (event && event.target) {
+        btn = event.target;
+        originalText = btn.textContent;
+        btn.textContent = '🔍 Detecting...';
+        btn.disabled = true;
+    }
 
     try {
         // First, check for currently loaded models in memory
@@ -248,10 +255,11 @@ async function detectModels() {
                             errorMessage = `CORS Error: Cannot connect to Ollama server.\n\nWindows PowerShell:\n$env:OLLAMA_ORIGINS="*"; ollama serve\n\nWindows CMD:\nset OLLAMA_ORIGINS=* && ollama serve\n\nOr use the start-ollama.bat file\n\nCheck if Ollama is running on http://127.0.0.1:11434`;
                         }
 
-                        showStatus(errorMessage, 'error');
-                        } finally {
-                            btn.textContent = originalText;
-                            btn.disabled = false;
+                        showStatus(errorMessage, 'error');                        } finally {
+                            if (btn) {
+                                btn.textContent = originalText;
+                                btn.disabled = false;
+                            }
                             updateActivateButtons();
                             await updateActiveModelsDisplay(); // Make this async call and await it
                         }

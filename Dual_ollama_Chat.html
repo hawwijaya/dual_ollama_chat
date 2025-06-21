@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦙🦙 Dual Ollama Chat - by Kuatrinnus Wijaya</title>
+
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/svg+xml" href="chat_icon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="chat_icon.svg">
+    <link rel="icon" type="image/png" sizes="16x16" href="chat_icon.svg">
+    <link rel="apple-touch-icon" sizes="180x180" href="chat_icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="msapplication-TileColor" content="#667eea">
+
+    <!-- External libraries for enhanced rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Add PDF.js for PDF processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Add SheetJS for Excel/CSV processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <link rel="stylesheet" href="chat_vision_understanding v2.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <!-- <svg class="chat-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                </svg> -->
+                <div class="title">🦙🦙 Dual Ollama Chat - by Kuatrinnus Wijaya</div>
+            </div>
+            <div class="header-buttons">
+                <button class="new-chat-btn" onclick="startNewChat()" id="newChatBtn" title="Start a new conversation">🆕 New Chat</button>
+                <button class="config-btn" onclick="toggleConfig()">⚙️ Settings</button>
+            </div>
+        </div>
+
+        <div class="config-panel" id="configPanel">
+            <div class="config-row">
+                <div class="config-group">
+                    <label for="hostInput">Host:</label>
+                    <input type="text" id="hostInput" value="127.0.0.1" placeholder="IP Address" title="Ollama server IP address">
+                </div>
+                <div class="config-group">
+                    <label for="portInput">Port:</label>
+                    <input type="number" id="portInput" value="11434" placeholder="Port" title="Ollama server port number">
+                </div>
+                <button class="btn" onclick="detectModels()" title="Detect available models from Ollama server">🔍 Detect Models</button>
+            </div>
+
+            <div class="config-row">
+                <div class="config-group inline-style-0" >
+                    <label for="modelSelect">Model:</label>
+                </div>
+                <div  class="inline-style-1">
+                    <!-- Model 1 Line -->
+                    <div  class="inline-style-4">
+                        <select id="modelSelect" title="Select AI model 1"  class="inline-style-5">
+                            <option value="">Select a model...</option>
+                        </select>
+                        <button class="btn" onclick="activateModel(1)" id="activateBtn" disabled title="Activate Model 1">🚀 Activate</button>
+                    </div>
+                    <!-- Model 2 Line -->
+                    <div  class="inline-style-4">
+                        <select id="modelSelect2" title="Select AI model 2"  class="inline-style-5">
+                            <option value="">Select a model...</option>
+                        </select>
+                        <button class="btn" onclick="activateModel(2)" id="activateBtn2" disabled title="Activate Model 2">🚀 Activate</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-row">
+                <div class="config-group inline-style-6" >
+                    <label for="systemPrompt"  class="inline-style-7">System Prompt:</label>
+                    <textarea id="systemPrompt" 
+                        placeholder="Enter system prompt to guide AI behavior..." 
+                         class="inline-style-8"
+                        title="System prompt that will be used for every conversation">You are a helpful AI assistant. You can analyze images, PDFs, and other files that users upload. Provide detailed, accurate, and helpful responses based on the content you see or read. Think twice before answering, then as a critic challenge the answer by reviewing the input prompt again, then give final answer!</textarea>
+                </div>
+            </div>
+
+            <div class="config-row" id="activeModelsDisplayRow">
+                <div class="config-group">
+                    <label  class="inline-style-9">Active Models:</label>
+                    <span id="activeModelsText"  class="inline-style-10">Model 1: None, Model 2: None</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <!-- Static welcome message that won't be sent to backend -->
+                <div class="message assistant" id="staticWelcomeMessage">
+                    <div class="message-content">
+                        👋 Hello! I'm your AI assistant run locally in your PC. Please configure your settings above and select a model to start chatting. Then you can add image, pdf, or other file and ask about the uploaded file
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <div class="input-row">
+                    <!-- Modified: Accept images, PDFs, SVG, CSV, and Excel files -->
+                    <input type="file" id="imageInput" accept="image/*,application/pdf,.pdf,.svg,image/svg+xml,.csv,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx,.xls"  class="inline-style-11" onchange="handleFileUpload(event)" title="Select a file (image/PDF/SVG/CSV/Excel)" aria-label="File upload">
+                    <button class="btn inline-style-12" id="imageBtn" title="Attach file (image/PDF/SVG/CSV/Excel)" onclick="document.getElementById('imageInput').click()"  aria-label="Attach file">📎</button>
+                    <label for="messageInput" class="sr-only">Message input</label>                    <textarea 
+                        class="input-field" 
+                        id="messageInput" 
+                        placeholder="Type your message here..." 
+                        rows="1"
+                        onkeydown="handleKeyDown(event)"
+                        disabled
+                        title="Type your message here"
+                        aria-label="Message input field"
+                    ></textarea>                    <button class="model-btn" onclick="sendMessageWithModel(1)" id="model1Btn" disabled title="Send to Model 1" aria-label="Send to Model 1">
+                        1
+                    </button>
+                    <button class="model-btn" onclick="sendMessageWithModel(2)" id="model2Btn" disabled title="Send to Model 2" aria-label="Send to Model 2">
+                        2
+                    </button>
+                </div>
+                <!-- Modified: File preview container with image enhancement support -->
+                <div id="imagePreviewContainer"  class="inline-style-13">
+                    <div id="filePreview"  class="inline-style-14">
+                        <img id="imagePreview" src="" alt="Image preview"  class="inline-style-15">
+                        <div id="pdfPreview"  class="inline-style-19">
+                            📄 <span id="pdfFileName"></span>
+                        </div>
+                        <div id="svgPreview"  class="inline-style-19">
+                            📊 <span id="svgFileName"></span>
+                        </div>
+                        <div id="csvPreview"  class="inline-style-19">
+                            📊 <span id="csvFileName"></span>
+                        </div>
+                        <div id="xlsxPreview"  class="inline-style-19">
+                            📈 <span id="xlsxFileName"></span>
+                        </div>
+                        <button class="btn inline-style-20"  onclick="removeFile()" title="Remove attached file" aria-label="Remove file">✖</button>
+                    </div>
+
+                    <!-- Add image enhancement panel -->
+                    <div id="imageEnhancementPanel" class="image-enhancement-panel">
+                        <div  class="inline-style-21">
+                            <h4  class="inline-style-22">🔧 OpenCV Image Enhancement</h4>
+                            <button class="enhancement-btn" onclick="toggleAutoEnhancement()" id="autoEnhanceBtn">🚀 Auto Enhance</button>
+                        </div>
+
+                        <div class="enhancement-controls">
+                            <div class="enhancement-group">
+                                <label for="brightnessSlider">Brightness: <span id="brightnessValue">0</span></label>
+                                <input type="range" id="brightnessSlider" class="enhancement-slider" min="-50" max="50" value="0" oninput="adjustImageEnhancement()">
+                            </div>
+                            <div class="enhancement-group">
+                                <label for="contrastSlider">Contrast: <span id="contrastValue">1.0</span></label>
+                                <input type="range" id="contrastSlider" class="enhancement-slider" min="0.5" max="2.0" step="0.1" value="1.0" oninput="adjustImageEnhancement()">
+                            </div>
+                            <div class="enhancement-group">
+                                <label for="sharpnessSlider">Sharpness: <span id="sharpnessValue">0</span></label>
+                                <input type="range" id="sharpnessSlider" class="enhancement-slider" min="0" max="3" step="0.1" value="0" oninput="adjustImageEnhancement()">
+                            </div>
+                            <div class="enhancement-group">
+                                <label for="saturationSlider">Saturation: <span id="saturationValue">1.0</span></label>
+                                <input type="range" id="saturationSlider" class="enhancement-slider" min="0" max="2" step="0.1" value="1.0" oninput="adjustImageEnhancement()">
+                            </div>
+                        </div>
+
+                        <div class="enhancement-buttons">
+                            <button class="enhancement-btn" onclick="applyPreset('auto')">Auto</button>
+                            <button class="enhancement-btn" onclick="applyPreset('vivid')">Vivid</button>
+                            <button class="enhancement-btn" onclick="applyPreset('soft')">Soft</button>
+                            <button class="enhancement-btn" onclick="applyPreset('sharp')">Sharp</button>
+                            <button class="enhancement-btn" onclick="applyPreset('vintage')">Vintage</button>
+                            <button class="enhancement-btn" onclick="resetEnhancement()">Reset</button>
+                        </div>
+
+                        <div id="imageComparisonContainer" class="image-comparison inline-style-23" >
+                            <div class="image-comparison-item">
+                                <div class="image-comparison-label">Original</div>
+                                <img id="originalImage" class="comparison-image" onclick="showImageModal(this.src)" alt="Original image">
+                                <div id="originalImageInfo" class="image-info"></div>
+                            </div>
+                            <div class="image-comparison-item">
+                                <div class="image-comparison-label">Enhanced (1080px)</div>
+                                <img id="enhancedImage" class="comparison-image" onclick="showImageModal(this.src)" alt="Enhanced image">
+                                <div id="enhancedImageInfo" class="image-info"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="chat_vision_understanding v2.js"></script>
+</body>
+</html>

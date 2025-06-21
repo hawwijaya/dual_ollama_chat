@@ -1,0 +1,16 @@
+{
+  "name": "Dual Ollama Chat",
+  "short_name": "Ollama Chat",
+  "description": "A dual-model AI chat app by Kuatrinnus Wijaya (Jun 2025)",
+  "start_url": "./Dual_ollama_chat.html",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "icons": [
+    {
+      "src": "chat_icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

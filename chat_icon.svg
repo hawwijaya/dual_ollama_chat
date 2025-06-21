@@ -1,0 +1,90 @@
+<!-- filepath: e:\test\qwen2.5VL_chat\ai-chat-icon.svg -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="chatGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2980b9;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Chat balloon background -->
+  <circle cx="35" cy="35" r="28" fill="url(#chatGradient)" opacity="0.9" filter="url(#glow)"/>
+  <path d="M 20 55 L 15 65 L 25 60 Z" fill="url(#chatGradient)" opacity="0.9"/>
+  
+  <!-- AI Brain symbol -->
+  <g transform="translate(20, 15)">
+    <!-- Brain outline -->
+    <path d="M 15 8 
+             C 8 8, 3 13, 3 20
+             C 3 25, 5 29, 8 32
+             C 8 35, 10 38, 13 40
+             C 16 42, 20 42, 23 40
+             C 26 42, 30 42, 33 40
+             C 36 38, 38 35, 38 32
+             C 41 29, 43 25, 43 20
+             C 43 13, 38 8, 31 8
+             C 28 6, 24 6, 23 8
+             C 22 6, 18 6, 15 8 Z" 
+          fill="url(#brainGradient)" 
+          stroke="white" 
+          stroke-width="1.5"/>
+    
+    <!-- Brain folds/circuits -->
+    <path d="M 10 18 Q 15 15, 20 18 Q 25 21, 30 18" 
+          fill="none" 
+          stroke="white" 
+          stroke-width="1.5" 
+          opacity="0.8"/>
+    <path d="M 12 25 Q 17 22, 22 25 Q 27 28, 32 25" 
+          fill="none" 
+          stroke="white" 
+          stroke-width="1.5" 
+          opacity="0.8"/>
+    <path d="M 14 32 Q 19 29, 24 32 Q 29 35, 34 32" 
+          fill="none" 
+          stroke="white" 
+          stroke-width="1.5" 
+          opacity="0.8"/>
+    
+    <!-- Circuit nodes -->
+    <circle cx="12" cy="20" r="1.5" fill="white" opacity="0.9"/>
+    <circle cx="23" cy="16" r="1.5" fill="white" opacity="0.9"/>
+    <circle cx="34" cy="22" r="1.5" fill="white" opacity="0.9"/>
+    <circle cx="15" cy="28" r="1.5" fill="white" opacity="0.9"/>
+    <circle cx="31" cy="30" r="1.5" fill="white" opacity="0.9"/>
+  </g>
+  
+  <!-- Chat dots -->
+  <g transform="translate(65, 60)">
+    <circle cx="0" cy="0" r="12" fill="url(#chatGradient)" opacity="0.8"/>
+    <circle cx="-4" cy="-2" r="2" fill="white"/>
+    <circle cx="0" cy="-2" r="2" fill="white"/>
+    <circle cx="4" cy="-2" r="2" fill="white"/>
+  </g>
+  
+  <!-- Connection lines (representing AI communication) -->
+  <path d="M 45 35 Q 55 25, 65 45" 
+        fill="none" 
+        stroke="url(#brainGradient)" 
+        stroke-width="2" 
+        opacity="0.6" 
+        stroke-dasharray="3,2"/>
+  
+  <!-- Subtle sparkles for AI magic -->
+  <g opacity="0.7">
+    <path d="M 75 20 L 77 18 L 79 20 L 77 22 Z" fill="#ffd700"/>
+    <path d="M 15 70 L 17 68 L 19 70 L 17 72 Z" fill="#ffd700"/>
+    <path d="M 85 75 L 87 73 L 89 75 L 87 77 Z" fill="#ffd700"/>
+  </g>
+</svg>

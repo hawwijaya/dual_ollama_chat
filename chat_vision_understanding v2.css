@@ -306,81 +306,118 @@
             background: #2d3748;
         }
 
-        .message-content table {
-            border-collapse: collapse;
-            margin: 12px 0;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            display: block;
-            white-space: nowrap;
+        /* Format view buttons for LaTeX and Markdown */
+        .code-buttons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
         }
 
-        .message-content th,
-        .message-content td {
-            border: 1px solid #dfe2e5;
+        .format-btn {
+            background: #2b6cb0;
+            color: #e2e8f0;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .format-btn:hover {
+            background: #2c5282;
+            transform: translateY(-1px);
+        }
+
+        .latex-btn {
+            background: #059669;
+        }
+
+        .latex-btn:hover {
+            background: #047857;
+        }
+
+        .markdown-btn {
+            background: #7c3aed;
+        }
+
+        .markdown-btn:hover {
+            background: #6d28d9;
+        }
+
+        /* Format modal styles */
+        .format-modal {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .format-modal .tab-content {
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        .format-modal pre {
+            background: #f7fafc !important;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .format-modal h1, .format-modal h2, .format-modal h3, 
+        .format-modal h4, .format-modal h5, .format-modal h6 {
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+            color: #2d3748;
+        }
+
+        .format-modal h1 { font-size: 2em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+        .format-modal h2 { font-size: 1.5em; }
+        .format-modal h3 { font-size: 1.3em; }
+
+        .format-modal p {
+            margin-bottom: 1em;
+            line-height: 1.6;
+        }
+
+        .format-modal ul, .format-modal ol {
+            margin-left: 1.5em;
+            margin-bottom: 1em;
+        }
+
+        .format-modal li {
+            margin-bottom: 0.3em;
+        }
+
+        .format-modal blockquote {
+            border-left: 4px solid #e2e8f0;
+            padding-left: 1em;
+            margin: 1em 0;
+            color: #718096;
+            font-style: italic;
+        }
+
+        .format-modal code {
+            background: #edf2f7;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .format-modal table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1em 0;
+        }
+
+        .format-modal th, .format-modal td {
+            border: 1px solid #e2e8f0;
             padding: 8px 12px;
             text-align: left;
         }
 
-        .message-content th {
-            background: #f6f8fa;
+        .format-modal th {
+            background: #f7fafc;
             font-weight: 600;
-        }
-
-        .message-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            margin: 8px 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .message-content a {
-            color: #0366d6;
-            text-decoration: none;
-        }
-
-        .message-content a:hover {
-            text-decoration: underline;
-        }
-
-        .message.user .message-content a {
-            color: #87ceeb;
-        }
-
-        .message-content hr {
-            border: none;
-            border-top: 1px solid #eaecef;
-            margin: 16px 0;
-        }
-
-        /* Math equations */
-        .MathJax {
-            font-size: 1em !important;
-        }
-
-        /* Code block with language detection */
-        .hljs {
-            background: #2d3748 !important;
-            color: #e2e8f0 !important;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                width: 100%;
-                height: 100vh;
-                border-radius: 0;
-            }
-
-            .config-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .message-content {
-                max-width: 85%;
-            }
         }
 
         .input-container {

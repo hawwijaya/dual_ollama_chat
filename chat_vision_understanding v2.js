@@ -8,14 +8,37 @@ document.addEventListener('DOMContentLoaded', function() {
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// Configure MathJax - Updated configuration
+// Configure MathJax - Updated configuration for local loading
 window.MathJax = {
     tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
         displayMath: [['$$', '$$'], ['\\[', '\\]']],
         processEscapes: true,
         processEnvironments: true,
-        packages: {'[+]': ['ams', 'newcommand', 'configmacros']}
+        packages: {'[+]': ['ams', 'newcommand', 'configmacros']},
+        // Add support for common LaTeX environments
+        environments: {
+            'document': ['', '', 0],  // Ignore document environment
+            'equation': ['\\begin{equation}', '\\end{equation}', 0],
+            'align': ['\\begin{align}', '\\end{align}', 0],
+            'gather': ['\\begin{gather}', '\\end{gather}', 0],
+            'multline': ['\\begin{multline}', '\\end{multline}', 0]
+        },
+        // Ignore common document commands
+        macros: {
+            documentclass: ['', 1],
+            usepackage: ['', 1],
+            title: ['', 1],
+            author: ['', 1],
+            date: ['', 1],
+            maketitle: '',
+            section: ['', 1],
+            subsection: ['', 1],
+            subsubsection: ['', 1],
+            textbf: ['\\mathbf{#1}', 1],
+            textit: ['\\mathit{#1}', 1],
+            today: '\\text{today}'
+        }
     },
     options: {
         skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
@@ -24,11 +47,44 @@ window.MathJax = {
     },
     startup: {
         ready: () => {
-            console.log('MathJax is loaded and ready');
+            console.log('MathJax is loaded and ready (local)');
             MathJax.startup.defaultReady();
+            // Set a flag to indicate MathJax is ready
+            window.mathJaxReady = true;
         }
     }
 };
+
+// Add a global flag to track MathJax readiness
+window.mathJaxReady = false;
+
+// Function to wait for MathJax to be ready (updated for local loading)
+function waitForMathJax(callback, timeout = 5000) {
+    const startTime = Date.now();
+    
+    const check = () => {
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            callback(true);
+        } else if (Date.now() - startTime > timeout) {
+            callback(false); // Timeout
+        } else {
+            setTimeout(check, 50); // Check more frequently for local loading
+        }
+    };
+    
+    check();
+}
+
+// Initialize MathJax when the script loads
+document.addEventListener('DOMContentLoaded', function() {
+    // MathJax should be available since it's loaded synchronously
+    if (window.MathJax) {
+        console.log('MathJax loaded locally and ready');
+        window.mathJaxReady = true;
+    } else {
+        console.warn('MathJax not found - check if lib/mathjax-tex-mml-chtml.js exists');
+    }
+});
 
 // Configure marked for markdown parsing
 marked.setOptions({
@@ -65,6 +121,71 @@ let spreadsheetStats = null; // Store statistics about spreadsheet
 // Modified: Initialize empty conversation history (no welcome message)
 let conversationHistory = [];
 let currentSystemPrompt = null; // Track current system prompt
+
+// Function to show loading indicator
+function showLoading() {
+    // Create or show loading indicator
+    let loadingDiv = document.getElementById('loadingIndicator');
+    if (!loadingDiv) {
+        loadingDiv = document.createElement('div');
+        loadingDiv.id = 'loadingIndicator';
+        loadingDiv.className = 'loading-indicator';
+        loadingDiv.innerHTML = `
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Generating response...</div>
+        `;
+        loadingDiv.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        `;
+        
+        // Add CSS for spinner if not already present
+        if (!document.getElementById('loadingSpinnerStyles')) {
+            const style = document.createElement('style');
+            style.id = 'loadingSpinnerStyles';
+            style.textContent = `
+                .loading-spinner {
+                    width: 24px;
+                    height: 24px;
+                    border: 3px solid rgba(255, 255, 255, 0.3);
+                    border-top: 3px solid #007acc;
+                    border-radius: 50%;
+                    animation: spin 1s linear infinite;
+                    margin-bottom: 10px;
+                }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                .loading-text {
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 14px;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        const messagesContainer = document.getElementById('messages');
+        messagesContainer.appendChild(loadingDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } else {
+        loadingDiv.style.display = 'flex';
+    }
+}
+
+// Function to hide loading indicator
+function hideLoading() {
+    const loadingDiv = document.getElementById('loadingIndicator');
+    if (loadingDiv) {
+        loadingDiv.remove();
+    }
+}
 
 // Modified: Start new chat (clear history and dynamic UI messages only)
 async function startNewChat() {
@@ -666,34 +787,73 @@ function addMessage(content, isUser = false, fileData = null, modelInfo = null) 
                                     modelInfoDiv.textContent = `Model ${modelInfo.number}: ${modelInfo.name}`;
                                     contentDiv.appendChild(modelInfoDiv);
                                 }
-                                } else {
-                                    try {
-                                        // Pre-process content to fix common equation formats
-                                        let processedContent = content
-                                        // Convert \[ \] to $$ $$ for display math
-                                        .replace(/\\\[(.*?)\\\]/gs, '$$$$1$$')
-                                        // Convert \( \) to $ $ for inline math
-                                        .replace(/\\\((.*?)\\\)/gs, '$$$1$$')
-                                        // Handle equations that might be in square brackets without backslashes
-                                        .replace(/\[\s*([^[\]]*[=<>≤≥≈∈∀∃∑∏∫][^[\]]*)\s*\]/g, '$$$$1$$')
-                                        // Fix common LaTeX commands that might be missing proper delimiters
-                                        .replace(/([^$])(\\frac|\\sqrt|\\sum|\\int|\\prod|\\lim)/g, '$1$$$2')
-                                        .replace(/(\\frac\{[^}]+\}\{[^}]+\}|\\sqrt\{[^}]+\}|\\sum_\{[^}]+\}|\\int_\{[^}]+\}|\\prod_\{[^}]+\}|\\lim_\{[^}]+\})([^$])/g, '$1$$$2');
+                                } else {                    try {
+                        // Pre-process content to fix common equation formats and handle LaTeX documents
+                        let processedContent = content
+                        // Convert \[ \] to $$ $$ for display math
+                        .replace(/\\\[(.*?)\\\]/gs, '$$$$1$$')
+                        // Convert \( \) to $ $ for inline math
+                        .replace(/\\\((.*?)\\\)/gs, '$$$1$$')
+                        // Handle equations that might be in square brackets without backslashes
+                        .replace(/\[\s*([^[\]]*[=<>≤≥≈∈∀∃∑∏∫][^[\]]*)\s*\]/g, '$$$$1$$')
+                        // Fix common LaTeX commands that might be missing proper delimiters
+                        .replace(/([^$])(\\frac|\\sqrt|\\sum|\\int|\\prod|\\lim)/g, '$1$$$2')
+                        .replace(/(\\frac\{[^}]+\}\{[^}]+\}|\\sqrt\{[^}]+\}|\\sum_\{[^}]+\}|\\int_\{[^}]+\}|\\prod_\{[^}]+\}|\\lim_\{[^}]+\})([^$])/g, '$1$$$2');
 
-                                        contentDiv.innerHTML = marked.parse(processedContent);
+                        // Check if content contains LaTeX document structure
+                        const hasLatexDocStructure = processedContent.includes('\\documentclass') || 
+                                                   processedContent.includes('\\begin{document}') ||
+                                                   processedContent.includes('\\usepackage');
 
-                                        // Add copy buttons to code blocks
+                        if (hasLatexDocStructure) {
+                            // For LaTeX documents, wrap in a special container to prevent MathJax processing
+                            processedContent = `<div class="latex-document-container">
+                                <div class="latex-document-notice" style="background:#e6f3ff;border:1px solid #4299e1;padding:12px;border-radius:8px;margin:12px 0;color:#2c5aa0;">
+                                    <strong>📄 LaTeX Document Detected</strong><br>
+                                    This appears to be a complete LaTeX document. Use the "View LaTeX formatted" button in code blocks to see a processed version.
+                                </div>
+                                ${marked.parse(processedContent)}
+                            </div>`;
+                            contentDiv.innerHTML = processedContent;
+                        } else {
+                            contentDiv.innerHTML = marked.parse(processedContent);
+                        }// Add copy buttons and format view buttons to code blocks
                                         contentDiv.querySelectorAll('pre code').forEach((block, index) => {
                                             const pre = block.parentElement;
                                             const language = block.className.match(/language-(\w+)/);
                                             const langName = language ? language[1] : 'text';
+                                            const codeContent = block.textContent;
 
-                                            // Create header with language and copy button
+                                            // Check if this is LaTeX or markdown content
+                                            const isLatex = langName === 'latex' || langName === 'tex' || 
+                                                          codeContent.includes('\\begin{') || 
+                                                          codeContent.includes('\\documentclass') ||
+                                                          codeContent.includes('\\usepackage') ||
+                                                          codeContent.match(/\\\w+\{[^}]*\}/);
+                                            
+                                            const isMarkdown = langName === 'markdown' || langName === 'md' ||
+                                                             (codeContent.includes('# ') || codeContent.includes('## ') ||
+                                                              codeContent.includes('**') || codeContent.includes('*') ||
+                                                              codeContent.includes('[') && codeContent.includes(']('));
+
+                                            // Create header with language, format view buttons, and copy button
                                             const header = document.createElement('div');
                                             header.className = 'code-header';
+                                            
+                                            let formatButtons = '';
+                                            if (isLatex) {
+                                                formatButtons += `<button class="format-btn latex-btn" onclick="viewLatexFormatted(this)" title="View LaTeX formatted">in latex</button>`;
+                                            }
+                                            if (isMarkdown) {
+                                                formatButtons += `<button class="format-btn markdown-btn" onclick="viewMarkdownFormatted(this)" title="View Markdown formatted">in markdown</button>`;
+                                            }
+
                                             header.innerHTML = `
-                                            <span>${langName}</span>
-                                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                                <span>${langName}</span>
+                                                <div class="code-buttons">
+                                                    ${formatButtons}
+                                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                                </div>
                                             `;
 
                                             // Insert header before pre
@@ -701,35 +861,39 @@ function addMessage(content, isUser = false, fileData = null, modelInfo = null) 
                                             pre.style.borderRadius = '0 0 8px 8px';
                                             pre.style.marginTop = '0';
 
-                                            // Store code content for copying
-                                            header.querySelector('.copy-btn').dataset.code = block.textContent;
-                                        });
-
-                                        // Process math equations with proper error handling
+                                            // Store code content for copying and formatting
+                                            header.querySelector('.copy-btn').dataset.code = codeContent;
+                                            if (isLatex) {
+                                                header.querySelector('.latex-btn').dataset.code = codeContent;
+                                            }
+                                            if (isMarkdown) {
+                                                header.querySelector('.markdown-btn').dataset.code = codeContent;
+                                            }
+                                        });                        // Process math equations with proper error handling (skip LaTeX document containers)
+                        if (window.MathJax && window.MathJax.typesetPromise && !contentDiv.querySelector('.latex-document-container')) {
+                            window.MathJax.typesetPromise([contentDiv]).then(() => {
+                                console.log('MathJax typesetting completed');
+                                }).catch((err) => {
+                                    console.warn('MathJax rendering error:', err);
+                                    // Fallback: try to render again after a short delay
+                                    setTimeout(() => {
                                         if (window.MathJax && window.MathJax.typesetPromise) {
-                                            window.MathJax.typesetPromise([contentDiv]).then(() => {
-                                                console.log('MathJax typesetting completed');
-                                                }).catch((err) => {
-                                                    console.warn('MathJax rendering error:', err);
-                                                    // Fallback: try to render again after a short delay
-                                                    setTimeout(() => {
-                                                        if (window.MathJax && window.MathJax.typesetPromise) {
-                                                            window.MathJax.typesetPromise([contentDiv]).catch(() => {
-                                                                console.warn('MathJax fallback rendering also failed');
-                                                            });
-                                                        }
-                                                    }, 100);
-                                                });
-                                                } else {
-                                                    // If MathJax is not ready, try again after a delay
-                                                    setTimeout(() => {
-                                                        if (window.MathJax && window.MathJax.typesetPromise) {
-                                                            window.MathJax.typesetPromise([contentDiv]).catch((err) => {
-                                                                console.warn('Delayed MathJax rendering error:', err);
-                                                            });
-                                                        }
-                                                    }, 500);
-                                                }
+                                            window.MathJax.typesetPromise([contentDiv]).catch(() => {
+                                                console.warn('MathJax fallback rendering also failed');
+                                            });
+                                        }
+                                    }, 100);
+                                });
+                                } else if (!contentDiv.querySelector('.latex-document-container')) {
+                                    // If MathJax is not ready, try again after a delay (but not for LaTeX documents)
+                                    setTimeout(() => {
+                                        if (window.MathJax && window.MathJax.typesetPromise) {
+                                            window.MathJax.typesetPromise([contentDiv]).catch((err) => {
+                                                console.warn('Delayed MathJax rendering error:', err);
+                                            });
+                                        }
+                                    }, 500);
+                                }
 
                                                 } catch (error) {
                                                     console.warn('Markdown parsing error:', error);
@@ -757,433 +921,364 @@ function copyCode(button) {
         });
     }
 
-function showLoading() {
-    const messagesContainer = document.getElementById('messages');
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'message assistant';
-    loadingDiv.id = 'loadingMessage';
-
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content loading';
-    contentDiv.innerHTML = '<div class="spinner"></div> Thinking...';
-
-    loadingDiv.appendChild(contentDiv);
-    messagesContainer.appendChild(loadingDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-}
-
-function hideLoading() {
-    const loadingMessage = document.getElementById('loadingMessage');
-    if (loadingMessage) {
-        loadingMessage.remove();
-    }
-}
-
-// New: PDF processing functions
-async function processPDF(file) {
+// Function to view LaTeX content in formatted view
+function viewLatexFormatted(button) {
+    const code = button.dataset.code;
+    
+    // Create modal for formatted LaTeX view
+    const modal = document.createElement('div');
+    modal.className = 'format-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background:white;border-radius:12px;max-width:90%;max-height:90%;overflow:auto;box-shadow:0 20px 40px rgba(0,0,0,0.3);display:flex;flex-direction:column;';
+    
+    // Modal header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;border-radius:12px 12px 0 0;';
+    header.innerHTML = `
+        <h3 style="margin:0;color:#2d3748;font-size:18px;">LaTeX Formatted View</h3>
+        <button onclick="this.closest('.format-modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#718096;">&times;</button>
+    `;
+    
+    // Content area with both source and rendered view
+    const contentArea = document.createElement('div');
+    contentArea.style.cssText = 'padding:20px;min-height:300px;';
+    
+    // Create tabs for source and rendered view
+    const tabContainer = document.createElement('div');
+    tabContainer.style.cssText = 'display:flex;margin-bottom:16px;border-bottom:1px solid #e2e8f0;';
+    
+    const sourceTab = document.createElement('button');
+    sourceTab.textContent = 'Source';
+    sourceTab.className = 'format-tab active';
+    sourceTab.style.cssText = 'padding:8px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid #3182ce;color:#3182ce;font-weight:500;';
+    
+    const renderedTab = document.createElement('button');
+    renderedTab.textContent = 'Rendered';
+    renderedTab.className = 'format-tab';
+    renderedTab.style.cssText = 'padding:8px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#718096;margin-left:8px;';
+    
+    tabContainer.appendChild(sourceTab);
+    tabContainer.appendChild(renderedTab);
+    
+    // Source view
+    const sourceView = document.createElement('div');
+    sourceView.className = 'tab-content active';
+    const sourcePre = document.createElement('pre');
+    sourcePre.style.cssText = 'background:#f7fafc;padding:16px;border-radius:8px;overflow:auto;margin:0;';
+    const sourceCode = document.createElement('code');
+    sourceCode.textContent = code;
+    sourceCode.style.cssText = 'font-family:"SF Mono",Monaco,"Cascadia Code","Roboto Mono",Consolas,"Courier New",monospace;font-size:14px;';
+    sourcePre.appendChild(sourceCode);
+    sourceView.appendChild(sourcePre);
+    
+    // Rendered view
+    const renderedView = document.createElement('div');
+    renderedView.className = 'tab-content';
+    renderedView.style.cssText = 'display:none;background:#fff;padding:16px;border:1px solid #e2e8f0;border-radius:8px;min-height:200px;';
+      // Try to render LaTeX using MathJax
     try {
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-
-        const extractedImages = [];
-        let extractedText = '';
-
-        // Show processing status
-        showPDFProcessingStatus('Processing PDF pages...');
-
-        // Process each page - extract both text and convert to images
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            const page = await pdf.getPage(pageNum);
-
-            // Extract text content
-            const textContent = await page.getTextContent();
-            const pageText = textContent.items.map(item => item.str).join(' ');
-            if (pageText.trim()) {
-                extractedText += `\n--- Page ${pageNum} ---\n${pageText.trim()}\n`;
+        let latexContent = code;
+        
+        // Check if this is a complete LaTeX document
+        if (latexContent.includes('\\documentclass') || latexContent.includes('\\begin{document}')) {
+            // Extract content from document body and math environments
+            const bodyMatch = latexContent.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
+            if (bodyMatch) {
+                latexContent = bodyMatch[1].trim();
             }
-
-            // Convert page to image
-            const viewport = page.getViewport({ scale: 1.5 });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-
-            await page.render({
-                canvasContext: context,
-                viewport: viewport
-            }).promise;
-
-            // Convert canvas to base64
-            const imageDataUrl = canvas.toDataURL('image/png');
-            const base64Data = imageDataUrl.split(',')[1];
-
-            extractedImages.push({
-                page: pageNum,
-                data: base64Data,
-                type: 'image/png'
+            
+            // If we still have document structure, show a formatted version instead
+            if (latexContent.includes('\\documentclass') || latexContent.includes('\\usepackage')) {
+                renderedView.innerHTML = `
+                    <div style="color:#2d3748;padding:16px;line-height:1.6;">
+                        <h4 style="margin:0 0 12px 0;color:#1a202c;">LaTeX Document Structure</h4>
+                        <div style="background:#f7fafc;padding:12px;border-radius:6px;font-family:monospace;font-size:13px;white-space:pre-wrap;">${code}</div>
+                        <p style="margin:12px 0 0 0;color:#718096;font-size:14px;">
+                            <strong>Note:</strong> This appears to be a complete LaTeX document. MathJax can only render mathematical expressions. 
+                            To see the rendered output, you would need to compile this with a LaTeX processor like pdflatex.
+                        </p>
+                    </div>
+                `;
+                return;
+            }
+        }
+          // For complete LaTeX documents, extract and render content properly
+        let renderedHTML = '<div style="padding:20px;line-height:1.6;max-width:800px;">';
+        
+        // Extract title, author, date if present
+        const titleMatch = latexContent.match(/\\title\{([^}]+)\}/);
+        const authorMatch = latexContent.match(/\\author\{([^}]+)\}/);
+        const dateMatch = latexContent.match(/\\date\{([^}]+)\}/);
+        
+        if (titleMatch || authorMatch || dateMatch) {
+            renderedHTML += '<div style="text-align:center;margin-bottom:30px;border-bottom:1px solid #e2e8f0;padding-bottom:20px;">';
+            if (titleMatch) {
+                renderedHTML += `<h1 style="margin:0 0 10px 0;color:#1a202c;font-size:24px;">${titleMatch[1]}</h1>`;
+            }
+            if (authorMatch) {
+                renderedHTML += `<p style="margin:5px 0;color:#4a5568;font-size:16px;">${authorMatch[1]}</p>`;
+            }
+            if (dateMatch) {
+                renderedHTML += `<p style="margin:5px 0;color:#718096;font-size:14px;">${dateMatch[1]}</p>`;
+            }
+            renderedHTML += '</div>';
+        }
+        
+        // Split content into sections and paragraphs
+        const sections = latexContent.split(/\\section\{([^}]+)\}/);
+        for (let i = 1; i < sections.length; i += 2) {
+            const sectionTitle = sections[i];
+            const sectionContent = sections[i + 1] || '';
+            
+            renderedHTML += `<h2 style="color:#2d3748;font-size:20px;margin:25px 0 15px 0;">${sectionTitle}</h2>`;
+            
+            // Process paragraph content
+            const paragraphs = sectionContent.split(/\n\s*\n/).filter(p => p.trim());
+            paragraphs.forEach(paragraph => {
+                const trimmedPara = paragraph.trim();
+                if (!trimmedPara) return;
+                
+                // Skip LaTeX commands
+                if (trimmedPara.startsWith('\\') && !trimmedPara.includes('$')) return;
+                
+                // Handle equations
+                const equationMatch = trimmedPara.match(/\\begin\{equation\}([\s\S]*?)\\end\{equation\}/);
+                if (equationMatch) {
+                    renderedHTML += `<div style="margin:20px 0;text-align:center;">$$${equationMatch[1].trim()}$$</div>`;
+                    return;
+                }
+                
+                // Process regular paragraphs with inline math
+                let processedPara = trimmedPara
+                    // Convert inline math
+                    .replace(/\$([^$]+)\$/g, '$$$1$$')
+                    // Convert text formatting
+                    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+                    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+                    // Remove LaTeX commands we don't need
+                    .replace(/\\[a-zA-Z]+(\[[^\]]*\])?(\{[^}]*\})*\s*/g, '');
+                
+                if (processedPara.trim()) {
+                    renderedHTML += `<p style="margin:15px 0;color:#2d3748;text-align:justify;">${processedPara}</p>`;
+                }
             });
-
-            // Update progress
-            showPDFProcessingStatus(`Processed page ${pageNum}/${pdf.numPages}...`);
         }
-
-        pdfTextContent = extractedText.trim() || null;
-        pdfImageContents = extractedImages;
-
-        showPDFProcessingStatus('PDF processing complete!', true);
-        updatePDFPreview();
-
-        return { text: pdfTextContent, images: pdfImageContents };
-
-        } catch (error) {
-            console.error('Error processing PDF:', error);
-            showPDFProcessingStatus('Error processing PDF: ' + error.message, false, true);
-            throw error;
-        }
-    }
-
-function showPDFProcessingStatus(message, complete = false, error = false) {
-    let statusDiv = document.getElementById('pdfProcessingStatus');
-    if (!statusDiv) {
-        statusDiv = document.createElement('div');
-        statusDiv.id = 'pdfProcessingStatus';
-        statusDiv.className = 'pdf-processing';
-        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
-    }
-
-    if (error) {
-        statusDiv.style.background = '#f8d7da';
-        statusDiv.style.borderColor = '#f5c6cb';
-        statusDiv.style.color = '#721c24';
-        statusDiv.innerHTML = `❌ ${message}`;
-        } else if (complete) {
-            statusDiv.style.background = '#d4edda';
-            statusDiv.style.borderColor = '#c3e6cb';
-            statusDiv.style.color = '#155724';
-            statusDiv.innerHTML = `✅ ${message}`;
-            setTimeout(() => {
-                if (statusDiv.parentNode) {
-                    statusDiv.remove();
+        
+        // If no sections found, process as single content
+        if (sections.length <= 2) {
+            const content = latexContent.replace(/\\(documentclass|usepackage|title|author|date|maketitle|begin\{document\}|end\{document\})[^}]*(\{[^}]*\})?/g, '').trim();
+            const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim());
+            
+            paragraphs.forEach(paragraph => {
+                const trimmedPara = paragraph.trim();
+                if (!trimmedPara) return;
+                
+                // Handle equations
+                const equationMatch = trimmedPara.match(/\\begin\{equation\}([\s\S]*?)\\end\{equation\}/);
+                if (equationMatch) {
+                    renderedHTML += `<div style="margin:20px 0;text-align:center;">$$${equationMatch[1].trim()}$$</div>`;
+                    return;
                 }
-            }, 3000);
+                
+                // Process regular paragraphs
+                let processedPara = trimmedPara
+                    .replace(/\$([^$]+)\$/g, '$$$1$$')
+                    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+                    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>');
+                
+                if (processedPara.trim() && !processedPara.startsWith('\\')) {
+                    renderedHTML += `<p style="margin:15px 0;color:#2d3748;text-align:justify;">${processedPara}</p>`;
+                }
+            });
+        }
+        
+        renderedHTML += '</div>';
+        renderedView.innerHTML = renderedHTML;        // Render with MathJax using the waiting function (local version)
+        renderedView.innerHTML = '<div style="color:#4299e1;padding:16px;">⏳ Preparing LaTeX rendering (local MathJax)...</div>';
+        
+        waitForMathJax((mathJaxReady) => {
+            if (mathJaxReady) {
+                // MathJax is ready, render the content
+                renderedView.innerHTML = renderedHTML;
+                window.MathJax.typesetPromise([renderedView]).then(() => {
+                    console.log('LaTeX rendered successfully with local MathJax');
+                }).catch((err) => {
+                    console.error('MathJax error:', err);
+                    renderedView.innerHTML = `
+                        <div style="color:#e53e3e;padding:16px;">
+                            <h4 style="margin:0 0 8px 0;">MathJax Rendering Error</h4>
+                            <p style="margin:0 0 8px 0;">Could not render LaTeX. Error details:</p>
+                            <code style="background:#fed7d7;padding:4px 8px;border-radius:4px;">${err.message || err}</code>
+                            <details style="margin-top:12px;">
+                                <summary style="cursor:pointer;color:#3182ce;">Show original LaTeX code</summary>
+                                <pre style="background:#f7fafc;padding:12px;margin-top:8px;border-radius:6px;overflow:auto;">${code}</pre>
+                            </details>
+                        </div>
+                    `;
+                });
             } else {
-                statusDiv.innerHTML = `<div class="spinner inline-style-34" ></div> ${message}`;
+                // MathJax failed to load locally
+                console.warn('Local MathJax not available');
+                renderedView.innerHTML = `
+                    <div style="color:#e53e3e;padding:16px;background:#fed7d7;border:1px solid #f56565;border-radius:8px;">
+                        <h4 style="margin:0 0 8px 0;">🚫 Local MathJax Not Available</h4>
+                        <p style="margin:0 0 12px 0;">The local MathJax library could not be loaded. Please check:</p>
+                        <ul style="margin:0 0 12px 20px;">
+                            <li>File exists: <code>lib/mathjax-tex-mml-chtml.js</code></li>
+                            <li>File is not corrupted (try re-downloading)</li>
+                            <li>No file permission issues</li>
+                        </ul>
+                        <p style="margin:0 0 12px 0;"><strong>Showing formatted content without math rendering:</strong></p>
+                    </div>
+                    ${renderedHTML.replace(/\$\$([^$]+)\$\$/g, '<div style="background:#f7fafc;padding:8px;margin:8px 0;border-radius:4px;font-family:monospace;border-left:4px solid #4299e1;"><strong>Math:</strong> $1</div>')}
+                `;
             }
-        }
-
-function updatePDFPreview() {
-    const container = document.getElementById('filePreview');
-
-    // Remove existing preview content
-    const existingContent = container.querySelector('.pdf-content-preview');
-    const existingImages = container.querySelector('.pdf-images-preview');
-    if (existingContent) existingContent.remove();
-    if (existingImages) existingImages.remove();
-
-    // Show text preview if available
-    if (pdfTextContent) {
-        const textDiv = document.createElement('div');
-        textDiv.className = 'pdf-content-preview';
-        textDiv.textContent = pdfTextContent.substring(0, 300) + (pdfTextContent.length > 300 ? '...' : '');
-        container.appendChild(textDiv);
-    }
-
-    // Show image thumbnails
-    if (pdfImageContents.length > 0) {
-        const imagesDiv = document.createElement('div');
-        imagesDiv.className = 'pdf-images-preview';
-
-        pdfImageContents.slice(0, 4).forEach((img, index) => {
-            const thumb = document.createElement('img');
-            thumb.src = 'data:' + img.type + ';base64,' + img.data;
-            thumb.className = 'pdf-image-thumb';
-            thumb.title = `Page ${img.page}`;
-            imagesDiv.appendChild(thumb);
         });
-
-        if (pdfImageContents.length > 4) {
-            const moreDiv = document.createElement('div');
-            moreDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;width:80px;height:60px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;font-size:10px;color:#666;';
-            moreDiv.textContent = `+${pdfImageContents.length - 4} more`;
-            imagesDiv.appendChild(moreDiv);
-        }
-
-        container.appendChild(imagesDiv);
+    } catch (error) {
+        renderedView.innerHTML = '<div style="color:#e53e3e;padding:16px;">Error rendering LaTeX: ' + error.message + '</div>';
     }
+    
+    // Tab switching functionality
+    sourceTab.onclick = () => {
+        sourceTab.style.borderBottomColor = '#3182ce';
+        sourceTab.style.color = '#3182ce';
+        renderedTab.style.borderBottomColor = 'transparent';
+        renderedTab.style.color = '#718096';
+        sourceView.style.display = 'block';
+        renderedView.style.display = 'none';
+    };
+    
+    renderedTab.onclick = () => {
+        renderedTab.style.borderBottomColor = '#3182ce';
+        renderedTab.style.color = '#3182ce';
+        sourceTab.style.borderBottomColor = 'transparent';
+        sourceTab.style.color = '#718096';
+        sourceView.style.display = 'none';
+        renderedView.style.display = 'block';
+    };
+    
+    contentArea.appendChild(tabContainer);
+    contentArea.appendChild(sourceView);
+    contentArea.appendChild(renderedView);
+    
+    modalContent.appendChild(header);
+    modalContent.appendChild(contentArea);
+    modal.appendChild(modalContent);
+    
+    // Close modal when clicking outside
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+    };
+    
+    document.body.appendChild(modal);
 }
 
-// New: SVG processing functions
-async function processSVG(file) {
+// Function to view Markdown content in formatted view
+function viewMarkdownFormatted(button) {
+    const code = button.dataset.code;
+    
+    // Create modal for formatted Markdown view
+    const modal = document.createElement('div');
+    modal.className = 'format-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;';
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background:white;border-radius:12px;max-width:90%;max-height:90%;overflow:auto;box-shadow:0 20px 40px rgba(0,0,0,0.3);display:flex;flex-direction:column;';
+    
+    // Modal header
+    const header = document.createElement('div');
+    header.style.cssText = 'padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:#f8f9fa;border-radius:12px 12px 0 0;';
+    header.innerHTML = `
+        <h3 style="margin:0;color:#2d3748;font-size:18px;">Markdown Formatted View</h3>
+        <button onclick="this.closest('.format-modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#718096;">&times;</button>
+    `;
+    
+    // Content area with both source and rendered view
+    const contentArea = document.createElement('div');
+    contentArea.style.cssText = 'padding:20px;min-height:300px;';
+    
+    // Create tabs for source and rendered view
+    const tabContainer = document.createElement('div');
+    tabContainer.style.cssText = 'display:flex;margin-bottom:16px;border-bottom:1px solid #e2e8f0;';
+    
+    const sourceTab = document.createElement('button');
+    sourceTab.textContent = 'Source';
+    sourceTab.className = 'format-tab active';
+    sourceTab.style.cssText = 'padding:8px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid #3182ce;color:#3182ce;font-weight:500;';
+    
+    const renderedTab = document.createElement('button');
+    renderedTab.textContent = 'Rendered';
+    renderedTab.className = 'format-tab';
+    renderedTab.style.cssText = 'padding:8px 16px;border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;color:#718096;margin-left:8px;';
+    
+    tabContainer.appendChild(sourceTab);
+    tabContainer.appendChild(renderedTab);
+    
+    // Source view
+    const sourceView = document.createElement('div');
+    sourceView.className = 'tab-content active';
+    const sourcePre = document.createElement('pre');
+    sourcePre.style.cssText = 'background:#f7fafc;padding:16px;border-radius:8px;overflow:auto;margin:0;';
+    const sourceCode = document.createElement('code');
+    sourceCode.textContent = code;
+    sourceCode.style.cssText = 'font-family:"SF Mono",Monaco,"Cascadia Code","Roboto Mono",Consolas,"Courier New",monospace;font-size:14px;';
+    sourcePre.appendChild(sourceCode);
+    sourceView.appendChild(sourcePre);
+    
+    // Rendered view
+    const renderedView = document.createElement('div');
+    renderedView.className = 'tab-content';
+    renderedView.style.cssText = 'display:none;background:#fff;padding:16px;border:1px solid #e2e8f0;border-radius:8px;min-height:200px;line-height:1.6;';
+    
+    // Render Markdown using marked
     try {
-        const svgText = await file.text();
-
-        // Show processing status
-        showSVGProcessingStatus('Converting SVG to image...');
-
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-
-            img.onload = function() {
-                // Set canvas size to image dimensions
-                canvas.width = img.width || 800;
-                canvas.height = img.height || 600;
-
-                // Draw the SVG image onto canvas
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-
-                // Convert to base64 PNG
-                const dataUrl = canvas.toDataURL('image/png');
-                svgConvertedBase64 = dataUrl.split(',')[1];
-
-                showSVGProcessingStatus('SVG conversion complete!', true);
-                resolve({ convertedBase64: svgConvertedBase64 });
-            };
-
-            img.onerror = function(error) {
-                console.error('SVG conversion error:', error);
-                showSVGProcessingStatus('Error converting SVG', false, true);
-                reject(error);
-            };
-
-            // Create blob URL for the SVG
-            const blob = new Blob([svgText], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
-            img.src = url;
-
-            // Clean up the blob URL after loading
-            img.onload = function() {
-                URL.revokeObjectURL(url);
-                // Set canvas size to image dimensions
-                canvas.width = img.width || 800;
-                canvas.height = img.height || 600;
-
-                // Draw the SVG image onto canvas
-                ctx.fillStyle = 'white';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-
-                // Convert to base64 PNG
-                const dataUrl = canvas.toDataURL('image/png');
-                svgConvertedBase64 = dataUrl.split(',')[1];
-
-                showSVGProcessingStatus('SVG conversion complete!', true);
-                resolve({ convertedBase64: svgConvertedBase64 });
-            };
-        });
-
-        } catch (error) {
-            console.error('Error processing SVG:', error);
-            showSVGProcessingStatus('Error processing SVG: ' + error.message, false, true);
-            throw error;
+        renderedView.innerHTML = marked.parse(code);
+        
+        // Process any math in the rendered markdown
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([renderedView]).catch(() => {
+                console.warn('MathJax rendering failed in markdown view');
+            });
         }
+    } catch (error) {
+        renderedView.innerHTML = '<div style="color:#e53e3e;padding:16px;">Error rendering Markdown: ' + error.message + '</div>';
     }
-
-function showSVGProcessingStatus(message, complete = false, error = false) {
-    let statusDiv = document.getElementById('svgProcessingStatus');
-    if (!statusDiv) {
-        statusDiv = document.createElement('div');
-        statusDiv.id = 'svgProcessingStatus';
-        statusDiv.className = 'pdf-processing';
-        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
-    }
-
-    if (error) {
-        statusDiv.style.background = '#f8d7da';
-        statusDiv.style.borderColor = '#f5c6cb';
-        statusDiv.style.color = '#721c24';
-        statusDiv.innerHTML = `❌ ${message}`;
-        } else if (complete) {
-            statusDiv.style.background = '#d4edda';
-            statusDiv.style.borderColor = '#c3e6cb';
-            statusDiv.style.color = '#155724';
-            statusDiv.innerHTML = `✅ ${message}`;
-            setTimeout(() => {
-                if (statusDiv.parentNode) {
-                    statusDiv.remove();
-                }
-            }, 3000);
-            } else {
-                statusDiv.innerHTML = `<div class="spinner inline-style-34" ></div> ${message}`;
-            }
-        }
-
-        // New: CSV processing functions
-async function processCSV(file) {
-    try {
-        showCSVProcessingStatus('Processing CSV file...');
-
-        const text = await file.text();
-        const workbook = XLSX.read(text, { type: 'string' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        // Calculate statistics
-        const stats = {
-            rows: jsonData.length,
-            columns: jsonData.length > 0 ? Math.max(...jsonData.map(row => row.length)) : 0,
-            nonEmptyRows: jsonData.filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== '')).length
-        };
-
-        spreadsheetData = jsonData;
-        spreadsheetStats = stats;
-
-        showCSVProcessingStatus('CSV processing complete!', true);
-        updateSpreadsheetPreview();
-
-        return { data: jsonData, stats: stats };
-
-        } catch (error) {
-            console.error('Error processing CSV:', error);
-            showCSVProcessingStatus('Error processing CSV: ' + error.message, false, true);
-            throw error;
-        }
-    }
-
-    // New: Excel processing functions
-async function processExcel(file) {
-    try {
-        showCSVProcessingStatus('Processing Excel file...');
-
-        const arrayBuffer = await file.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-        // Process all sheets
-        const allSheetsData = {};
-        let totalRows = 0;
-        let maxColumns = 0;
-
-        workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            allSheetsData[sheetName] = jsonData;
-            totalRows += jsonData.length;
-            if (jsonData.length > 0) {
-                maxColumns = Math.max(maxColumns, Math.max(...jsonData.map(row => row.length)));
-            }
-        });
-
-        // Use first sheet as primary data
-        const firstSheetName = workbook.SheetNames[0];
-        const primaryData = allSheetsData[firstSheetName] || [];
-
-        const stats = {
-            sheets: workbook.SheetNames.length,
-            rows: primaryData.length,
-            columns: maxColumns,
-            totalRows: totalRows,
-            nonEmptyRows: primaryData.filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== '')).length,
-            sheetNames: workbook.SheetNames
-        };
-
-        spreadsheetData = primaryData;
-        spreadsheetStats = stats;
-
-        showCSVProcessingStatus('Excel processing complete!', true);
-        updateSpreadsheetPreview();
-
-        return { data: allSheetsData, primaryData: primaryData, stats: stats };
-
-        } catch (error) {
-            console.error('Error processing Excel:', error);
-            showCSVProcessingStatus('Error processing Excel: ' + error.message, false, true);
-            throw error;
-        }
-    }
-
-function showCSVProcessingStatus(message, complete = false, error = false) {
-    let statusDiv = document.getElementById('csvProcessingStatus');
-    if (!statusDiv) {
-        statusDiv = document.createElement('div');
-        statusDiv.id = 'csvProcessingStatus';
-        statusDiv.className = 'csv-processing';
-        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
-    }
-
-    if (error) {
-        statusDiv.style.background = '#f8d7da';
-        statusDiv.style.borderColor = '#f5c6cb';
-        statusDiv.style.color = '#721c24';
-        statusDiv.innerHTML = `❌ ${message}`;
-        } else if (complete) {
-            statusDiv.style.background = '#d4edda';
-            statusDiv.style.borderColor = '#c3e6cb';
-            statusDiv.style.color = '#155724';
-            statusDiv.innerHTML = `✅ ${message}`;
-            setTimeout(() => {
-                if (statusDiv.parentNode) {
-                    statusDiv.remove();
-                }
-            }, 3000);
-            } else {
-                statusDiv.innerHTML = `<div class="spinner inline-style-34" ></div> ${message}`;
-            }
-        }
-
-function updateSpreadsheetPreview() {
-    const container = document.getElementById('filePreview');
-
-    // Remove existing preview content
-    const existingPreview = container.querySelector('.spreadsheet-preview');
-    if (existingPreview) existingPreview.remove();
-
-    if (spreadsheetData && spreadsheetData.length > 0) {
-        const previewDiv = document.createElement('div');
-        previewDiv.className = 'spreadsheet-preview';
-
-        // Create table
-        const table = document.createElement('table');
-
-        // Add headers (first row or A, B, C... if no headers)
-        const headerRow = document.createElement('tr');
-        const firstDataRow = spreadsheetData[0] || [];
-        const maxCols = Math.min(10, Math.max(5, firstDataRow.length)); // Show max 10 columns
-
-        for (let i = 0; i < maxCols; i++) {
-            const th = document.createElement('th');
-            th.textContent = firstDataRow[i] || String.fromCharCode(65 + i); // A, B, C... if empty
-            headerRow.appendChild(th);
-        }
-        table.appendChild(headerRow);
-
-        // Add data rows (skip first row if it looks like headers, otherwise include it)
-        const hasHeaders = firstDataRow.every(cell => typeof cell === 'string' && cell.length > 0);
-        const startRow = hasHeaders ? 1 : 0;
-        const maxRows = Math.min(8, spreadsheetData.length - startRow); // Show max 8 data rows
-
-        for (let i = startRow; i < startRow + maxRows && i < spreadsheetData.length; i++) {
-            const row = spreadsheetData[i];
-            const tr = document.createElement('tr');
-
-            for (let j = 0; j < maxCols; j++) {
-                const td = document.createElement('td');
-                const cellValue = row[j];
-                td.textContent = cellValue !== null && cellValue !== undefined ? String(cellValue) : '';
-                td.title = td.textContent; // Tooltip for truncated content
-                tr.appendChild(td);
-            }
-            table.appendChild(tr);
-        }
-
-        previewDiv.appendChild(table);
-
-        // Add statistics
-        const statsDiv = document.createElement('div');
-        statsDiv.className = 'spreadsheet-stats';
-        let statsText = `${spreadsheetStats.rows} rows × ${spreadsheetStats.columns} columns`;
-        if (spreadsheetStats.sheets > 1) {
-            statsText += ` • ${spreadsheetStats.sheets} sheets: ${spreadsheetStats.sheetNames.join(', ')}`;
-        }
-        statsDiv.textContent = statsText;
-        previewDiv.appendChild(statsDiv);
-
-        container.appendChild(previewDiv);
-    }
+    
+    // Tab switching functionality
+    sourceTab.onclick = () => {
+        sourceTab.style.borderBottomColor = '#3182ce';
+        sourceTab.style.color = '#3182ce';
+        renderedTab.style.borderBottomColor = 'transparent';
+        renderedTab.style.color = '#718096';
+        sourceView.style.display = 'block';
+        renderedView.style.display = 'none';
+    };
+    
+    renderedTab.onclick = () => {
+        renderedTab.style.borderBottomColor = '#3182ce';
+        renderedTab.style.color = '#3182ce';
+        sourceTab.style.borderBottomColor = 'transparent';
+        sourceTab.style.color = '#718096';
+        sourceView.style.display = 'none';
+        renderedView.style.display = 'block';
+    };
+    
+    contentArea.appendChild(tabContainer);
+    contentArea.appendChild(sourceView);
+    contentArea.appendChild(renderedView);
+    
+    modalContent.appendChild(header);
+    modalContent.appendChild(contentArea);
+    modal.appendChild(modalContent);
+    
+    // Close modal when clicking outside
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+    };
+    
+    document.body.appendChild(modal);
 }
 
 // Modified: Handle image, PDF, SVG, CSV, and Excel uploads
@@ -1750,73 +1845,16 @@ async function sendMessageWithModel(modelNumber) {
         return;
     }
 
-    // Call the existing sendMessage function with specific model info
-    await sendMessage(modelNumber, selectedModel);
-}
-
-// Modified: Updated message sending to exclude static welcome from backend
-async function sendMessage(specificModelNumber = null, specificModelName = null) {
-    if (isLoading) return;
+    // Get the message from the input field
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
     
-    // Check if there's an ongoing request being aborted
-    if (currentAbortController) return;
-
-    let activeModelName = null;
-    let activeModelNumber = null;
-    
-    // If specific model is provided, use it
-    if (specificModelNumber && specificModelName) {
-        activeModelName = specificModelName;
-        activeModelNumber = specificModelNumber;
-    } else {
-        // Otherwise, use the first available model
-        if (currentModel1) {
-            activeModelName = currentModel1;
-            activeModelNumber = 1;
-        } else if (currentModel2) {
-            activeModelName = currentModel2;
-            activeModelNumber = 2;
-        }
-    }
-
-    if (!activeModelName) {
-        showStatus('No active model. Please activate a model to send a message.', 'error');
+    if (!message && !uploadedFileBase64) {
+        showStatus('Please enter a message or upload a file.', 'error');
         return;
     }
 
-        const messageInput = document.getElementById('messageInput');
-        const message = messageInput.value.trim();
-
-        if (!message && !uploadedFileBase64 && !pdfImageContents.length && !svgConvertedBase64 && !spreadsheetData) return;
-
-        // Get system prompt and check if it changed
-        const systemPrompt = document.getElementById('systemPrompt').value.trim();
-        const systemPromptChanged = currentSystemPrompt !== systemPrompt;
-
-        // If system prompt changed, we need to restart the conversation context
-        if (systemPromptChanged && systemPrompt) {
-            currentSystemPrompt = systemPrompt;
-            // Add system message to history if it's the first time or changed
-            if (conversationHistory.length === 0) {
-                // Insert system prompt at the beginning of conversation
-                conversationHistory.unshift({
-                    role: "system",
-                    content: systemPrompt
-                });
-                } else {
-                    // For existing conversations, we'll include it in the request but not permanently store it
-                    // to avoid duplicating system messages
-                }
-                } else if (systemPromptChanged && !systemPrompt) {
-                    // System prompt was cleared
-                    currentSystemPrompt = null;
-                    // Remove system message from history if it exists
-                    if (conversationHistory.length > 0 && conversationHistory[0].role === "system") {
-                        conversationHistory.shift();
-                    }
-                }
-
-                // Prepare file data for display
+    // Call the existing sendMessage function with specific model info
                 let fileData = null;
                 if (uploadedFileBase64) {
                     fileData = {
@@ -1838,8 +1876,9 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                     } else if (spreadsheetData) {
                         // Convert spreadsheet data to text format for AI analysis
                         const csvText = convertSpreadsheetToText(spreadsheetData, spreadsheetStats);
-                        finalMessage = `${message}\n\n[Spreadsheet Data from "${uploadedFileName}"]\n${csvText}`;
-                    }                    // Create model info using the active model for this request
+                        finalMessage = `${message}\n\n[Spreadsheet Data from "${uploadedFileName}"]\n${csvText}`;                    }                    // Create model info using the active model for this request
+                    const activeModelNumber = modelNumber;
+                    const activeModelName = selectedModel;
                     let modelInfo = null;
                     if (activeModelNumber && activeModelName) {
                         modelInfo = { number: activeModelNumber, name: activeModelName };
@@ -1900,49 +1939,81 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                 showLoading();
                 document.getElementById('model1Btn').disabled = true;
                 document.getElementById('model2Btn').disabled = true;
-                messageInput.disabled = true;
-
-                                // Prepare messages array for API request
+                messageInput.disabled = true;                                // Prepare messages array for API request
                                 let messages = [];
 
-                                // Always include current system prompt if present
+                                // Get system prompt from textarea and include if present
+                                const systemPromptElement = document.getElementById('systemPrompt');
+                                const systemPrompt = systemPromptElement ? systemPromptElement.value.trim() : '';
                                 if (systemPrompt) {
                                     messages.push({ role: "system", content: systemPrompt });
-                                }
-
-                                // Add conversation history (excluding system messages from history to avoid duplication)
-                                const historyMessages = conversationHistory.filter(msg => msg.role !== "system");
-                                messages = messages.concat(historyMessages.map(msg => {
-                                    // Include images for user messages (both regular images and PDF pages)
-                                    if (msg.role === "user" && msg.images) {
-                                        return { role: msg.role, content: msg.content, images: msg.images };
-                                        } else {
-                                            return { role: msg.role, content: msg.content };
-                                        }
-                                    }));                                    // Create new AbortController for this request
-                                    currentAbortController = new AbortController();
+                                }// Add conversation history (excluding system messages from history to avoid duplication)
+                                const historyMessages = conversationHistory.filter(msg => msg.role !== "system");                                messages = messages.concat(historyMessages.map(msg => {
+                                    // Ensure content is always a string
+                                    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
                                     
-                                    // Prepare request body
+                                    // Include images for user messages - format according to Ollama API
+                                    if (msg.role === "user" && msg.images) {
+                                        // For Ollama, images should be in the images array as base64 strings
+                                        return { 
+                                            role: msg.role, 
+                                            content: content, 
+                                            images: msg.images.map(img => {
+                                                // Remove data:image/...;base64, prefix if present
+                                                return img.replace(/^data:image\/[^;]+;base64,/, '');
+                                            })
+                                        };
+                                        } else {
+                                            return { role: msg.role, content: content };
+                                        }
+                                    }));// Create new AbortController for this request
+                                    currentAbortController = new AbortController();
+                                      // Prepare request body
                                     const body = {
                                         model: activeModelName,
                                         messages: messages,
                                         stream: false
-                                    };
+                                    };                                    // Debug logging (can be removed in production)
+                                    console.log('Sending request to model:', activeModelName);
+                                    console.log('Messages count:', messages.length);
 
-                                    try {
+                                    // Validate request before sending
+                                    if (!activeModelName) {
+                                        throw new Error('No model name specified');
+                                    }
+                                    if (!messages || messages.length === 0) {
+                                        throw new Error('No messages to send');
+                                    }                                    // Ensure each message has required fields
+                                    for (const msg of messages) {
+                                        if (!msg.role || !msg.content) {
+                                            throw new Error(`Invalid message format: ${JSON.stringify(msg)}`);
+                                        }
+                                        if (typeof msg.content !== 'string') {
+                                            throw new Error(`Message content must be string, got ${typeof msg.content}: ${JSON.stringify(msg.content)}`);
+                                        }
+                                    }try {
                                         const response = await fetch(`${baseUrl}/api/chat`, {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/json',
                                             },
                                             mode: 'cors',
-                                            body: JSON.stringify(body),
-                                            signal: currentAbortController.signal
+                                            body: JSON.stringify(body),                                            signal: currentAbortController.signal
                                         });
 
                                         if (!response.ok) {
-                                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                        }                                        const data = await response.json();
+                                            // Try to get error details from response body
+                                            let errorDetails = '';
+                                            try {
+                                                const errorData = await response.json();
+                                                errorDetails = errorData.error || JSON.stringify(errorData);
+                                            } catch (e) {
+                                                errorDetails = await response.text();
+                                            }
+                                            throw new Error(`HTTP ${response.status}: ${response.statusText}. Details: ${errorDetails}`);
+                                        }
+                                        
+                                        const data = await response.json();
                                         hideLoading();
                                         addMessage(data.message?.content || data.response || 'No response received');
 
@@ -1952,36 +2023,40 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                                         });
                                         
                                         // Clear abort controller on successful completion
-                                        currentAbortController = null;} catch (error) {
-                                            console.error('Error sending message:', error);
-                                            hideLoading();
-                                              // Handle aborted requests differently
-                                            if (error.name === 'AbortError') {
-                                                console.log('Request was aborted by user');
-                                                addMessage('Request cancelled by user - new chat started', false);
-                                                // Don't add cancelled requests to conversation history
-                                                return; // Exit early for aborted requests
-                                            }
-                                            
-                                            let errorMessage = error.message;
-                                            if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-
-                                                errorMessage = 'CORS Error: Cannot connect to Ollama server.\n\nWindows PowerShell:\n$env:OLLAMA_ORIGINS="*"; ollama serve\n\nWindows CMD:\nset OLLAMA_ORIGINS=* && ollama serve\n\nOr use the start-ollama.bat file\n\nCheck if Ollama is running on http://127.0.0.1:11434';
-                                            }
-
-                                            addMessage(`Error: ${errorMessage}`, false);
-                                            conversationHistory.push({
-                                                role: "assistant",
-                                                content: `Error: ${errorMessage}`
-                                            });                            } finally {
-                                isLoading = false;
-                                currentAbortController = null; // Clear the abort controller
-                                updateModelButtons(); // Re-enable buttons based on active models
-                                messageInput.focus();
-                            }
+                                        currentAbortController = null;
+                                        
+                                    } catch (error) {
+                                        console.error('Error sending message:', error);
+                                        hideLoading();
+                                        
+                                        // Handle aborted requests differently
+                                        if (error.name === 'AbortError') {
+                                            console.log('Request was aborted by user');
+                                            addMessage('Request cancelled by user - new chat started', false);
+                                            // Don't add cancelled requests to conversation history
+                                            return; // Exit early for aborted requests
                                         }
+                                        
+                                        let errorMessage = error.message;
+                                        if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+                                            errorMessage = 'CORS Error: Cannot connect to Ollama server.\n\nWindows PowerShell:\n$env:OLLAMA_ORIGINS="*"; ollama serve\n\nWindows CMD:\nset OLLAMA_ORIGINS=* && ollama serve\n\nOr use the start-ollama.bat file\n\nCheck if Ollama is running on http://127.0.0.1:11434';
+                                        }
+                                        
+                                        addMessage(`Error: ${errorMessage}`, false);
+                                        conversationHistory.push({
+                                            role: "assistant",
+                                            content: `Error: ${errorMessage}`
+                                        });
+                                        
+                                    } finally {
+                                        isLoading = false;
+                                        currentAbortController = null; // Clear the abort controller
+                                        updateModelButtons(); // Re-enable buttons based on active models
+                                        messageInput.focus();
+                                    }
+                                }
 
-                                        // Helper function to convert spreadsheet data to text
+// Helper function to convert spreadsheet data to text
 function convertSpreadsheetToText(data, stats) {
     if (!data || data.length === 0) return "Empty spreadsheet";
 

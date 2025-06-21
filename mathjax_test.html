@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MathJax Local Test</title>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+    </script>
+    <script src="lib/mathjax-tex-mml-chtml.js"></script>
+</head>
+<body>
+    <h1>MathJax Local Test</h1>
+    <p>Inline math: $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$</p>
+    <p>Display math:</p>
+    $$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('MathJax object:', window.MathJax);
+            console.log('MathJax typesetPromise:', window.MathJax ? window.MathJax.typesetPromise : 'undefined');
+        });
+    </script>
+</body>
+</html>

@@ -49,6 +49,9 @@ let currentModel2 = null;
 let isLoading = false;
 let baseUrl = 'http://127.0.0.1:11434';
 
+// Add AbortController for canceling ongoing requests
+let currentAbortController = null;
+
 // Modified: Store PDF/SVG/CSV/Excel content
 let uploadedFileBase64 = null;
 let uploadedFileType = null;
@@ -64,7 +67,13 @@ let conversationHistory = [];
 let currentSystemPrompt = null; // Track current system prompt
 
 // Modified: Start new chat (clear history and dynamic UI messages only)
-function startNewChat() {
+async function startNewChat() {
+    // Stop any ongoing inference process
+    await stopOngoingInference();
+    
+    // Note: We don't unload models from memory to avoid reload time
+    // Models remain loaded for faster subsequent requests
+    
     conversationHistory = []; // Empty history, no welcome message
     currentSystemPrompt = null; // Reset system prompt tracking
     const messagesContainer = document.getElementById('messages');
@@ -75,6 +84,80 @@ function startNewChat() {
 
     removeFile(); // Updated function name
     document.getElementById('messageInput').value = '';
+    
+    console.log('New chat started - inference stopped, models remain loaded for efficiency');
+}
+
+// Function to stop ongoing inference process
+async function stopOngoingInference() {
+    if (currentAbortController) {
+        console.log('Aborting ongoing request...');
+        currentAbortController.abort();
+        currentAbortController = null;
+    }
+    
+    if (isLoading) {
+        // Reset loading state
+        isLoading = false;
+        hideLoading();
+        
+        // Re-enable UI elements
+        updateModelButtons();
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.disabled = false;
+            messageInput.focus();
+        }
+        
+        console.log('Stopped ongoing inference and reset UI state');
+    }
+}
+
+// Function to clear Ollama model memory and cache (DISABLED - keeps models loaded for efficiency)
+// This function can be called manually if needed to free up memory
+async function clearOllamaMemory() {
+    try {
+        updateBaseUrl();
+        
+        // Get currently loaded models
+        const psResponse = await fetch(`${baseUrl}/api/ps`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            timeout: 5000
+        });
+        
+        if (psResponse.ok) {
+            const data = await psResponse.json();
+            const loadedModels = data.models || [];
+            
+            // Unload each model to clear memory
+            for (const model of loadedModels) {
+                try {
+                    await fetch(`${baseUrl}/api/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: model.name,
+                            keep_alive: 0 // This tells Ollama to unload the model
+                        }),
+                        timeout: 5000
+                    });
+                    console.log(`Unloaded model: ${model.name}`);
+                } catch (error) {
+                    console.warn(`Failed to unload model ${model.name}:`, error);
+                }
+            }
+            
+            console.log('Ollama memory cleared - all models unloaded');
+        }
+    } catch (error) {
+        console.warn('Failed to clear Ollama memory:', error);
+        // Don't throw error as this is not critical for starting new chat
+    }
 }
 
 function toggleConfig() {
@@ -1674,6 +1757,9 @@ async function sendMessageWithModel(modelNumber) {
 // Modified: Updated message sending to exclude static welcome from backend
 async function sendMessage(specificModelNumber = null, specificModelName = null) {
     if (isLoading) return;
+    
+    // Check if there's an ongoing request being aborted
+    if (currentAbortController) return;
 
     let activeModelName = null;
     let activeModelNumber = null;
@@ -1833,8 +1919,9 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                                         } else {
                                             return { role: msg.role, content: msg.content };
                                         }
-                                    }));
-
+                                    }));                                    // Create new AbortController for this request
+                                    currentAbortController = new AbortController();
+                                    
                                     // Prepare request body
                                     const body = {
                                         model: activeModelName,
@@ -1849,14 +1936,13 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                                                 'Content-Type': 'application/json',
                                             },
                                             mode: 'cors',
-                                            body: JSON.stringify(body)
+                                            body: JSON.stringify(body),
+                                            signal: currentAbortController.signal
                                         });
 
                                         if (!response.ok) {
                                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                        }
-
-                                        const data = await response.json();
+                                        }                                        const data = await response.json();
                                         hideLoading();
                                         addMessage(data.message?.content || data.response || 'No response received');
 
@@ -1864,10 +1950,19 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                                             role: "assistant",
                                             content: data.message?.content || data.response || 'No response received'
                                         });
-
-                                        } catch (error) {
+                                        
+                                        // Clear abort controller on successful completion
+                                        currentAbortController = null;} catch (error) {
                                             console.error('Error sending message:', error);
                                             hideLoading();
+                                              // Handle aborted requests differently
+                                            if (error.name === 'AbortError') {
+                                                console.log('Request was aborted by user');
+                                                addMessage('Request cancelled by user - new chat started', false);
+                                                // Don't add cancelled requests to conversation history
+                                                return; // Exit early for aborted requests
+                                            }
+                                            
                                             let errorMessage = error.message;
                                             if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
 
@@ -1880,6 +1975,7 @@ async function sendMessage(specificModelNumber = null, specificModelName = null)
                                                 content: `Error: ${errorMessage}`
                                             });                            } finally {
                                 isLoading = false;
+                                currentAbortController = null; // Clear the abort controller
                                 updateModelButtons(); // Re-enable buttons based on active models
                                 messageInput.focus();
                             }

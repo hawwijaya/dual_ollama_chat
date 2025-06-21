@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathJax Fix Test</title>
+    
+    <!-- Configure MathJax before loading it -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                packages: {'[+]': ['ams', 'newcommand', 'configmacros']}
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            },
+            startup: {
+                ready: () => {
+                    console.log('MathJax is loaded and ready!');
+                    MathJax.startup.defaultReady();
+                    window.mathJaxReady = true;
+                    
+                    // Test if typesetting works
+                    setTimeout(() => {
+                        console.log('MathJax typesetPromise available:', !!window.MathJax.typesetPromise);
+                        if (window.MathJax.typesetPromise) {
+                            window.MathJax.typesetPromise([document.body]).then(() => {
+                                console.log('Initial typesetting completed successfully!');
+                            }).catch(err => {
+                                console.error('Initial typesetting failed:', err);
+                            });
+                        }
+                    }, 100);
+                }
+            }
+        };
+        
+        window.mathJaxReady = false;
+    </script>
+    
+    <script id="MathJax-script" src="lib/mathjax-tex-mml-chtml.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .status {
+            font-weight: bold;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>MathJax Fix Test</h1>
+    
+    <div id="status" class="status">Loading...</div>
+    
+    <div class="test-section">
+        <h2>Inline Math Test</h2>
+        <p>This is inline math: $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$ and this should render properly.</p>
+        <p>Another inline example: $\int_{0}^{1} x^2 dx = \frac{1}{3}$</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Display Math Test</h2>
+        <p>This is display math:</p>
+        $$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+        
+        <p>Another display example:</p>
+        $$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$
+    </div>
+    
+    <div class="test-section">
+        <h2>Complex Math Test</h2>
+        <p>Matrix example:</p>
+        $$\begin{pmatrix}
+        a & b \\
+        c & d
+        \end{pmatrix}
+        \begin{pmatrix}
+        x \\
+        y
+        \end{pmatrix}
+        =
+        \begin{pmatrix}
+        ax + by \\
+        cx + dy
+        \end{pmatrix}$$
+    </div>
+    
+    <script>
+        function updateStatus(message, isSuccess = true) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status ' + (isSuccess ? 'success' : 'error');
+        }
+        
+        // Wait for MathJax to be ready
+        let checkCount = 0;
+        const maxChecks = 50; // 5 seconds maximum
+        
+        function checkMathJax() {
+            checkCount++;
+            
+            if (window.mathJaxReady && window.MathJax && window.MathJax.typesetPromise) {
+                updateStatus('✅ MathJax loaded successfully and ready for use!', true);
+                
+                // Test dynamic typesetting
+                setTimeout(() => {
+                    const testDiv = document.createElement('div');
+                    testDiv.innerHTML = '<p>Dynamic test: $f(x) = x^2 + 2x + 1$</p>';
+                    document.body.appendChild(testDiv);
+                    
+                    window.MathJax.typesetPromise([testDiv]).then(() => {
+                        console.log('Dynamic typesetting test passed!');
+                    }).catch(err => {
+                        console.error('Dynamic typesetting test failed:', err);
+                    });
+                }, 1000);
+                
+            } else if (checkCount >= maxChecks) {
+                updateStatus('❌ MathJax failed to load within 5 seconds. Check console for errors.', false);
+                console.error('MathJax status:', {
+                    mathJaxReady: window.mathJaxReady,
+                    MathJax: window.MathJax,
+                    typesetPromise: window.MathJax ? window.MathJax.typesetPromise : 'N/A'
+                });
+            } else {
+                setTimeout(checkMathJax, 100);
+            }
+        }
+        
+        // Start checking after DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(checkMathJax, 100);
+        });
+    </script>
+</body>
+</html>

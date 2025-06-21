@@ -1,27 +1,147 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>MathJax Local Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathJax Local Test - Complete</title>
     <script>
         window.MathJax = {
             tex: {
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true,
+                packages: {'[+]': ['ams', 'newcommand', 'configmacros']},
+                macros: {
+                    documentclass: ['', 1],
+                    usepackage: ['', 1],
+                    title: ['', 1],
+                    author: ['', 1],
+                    date: ['', 1],
+                    maketitle: '',
+                    section: ['', 1],
+                    subsection: ['', 1],
+                    textbf: ['\\mathbf{#1}', 1],
+                    textit: ['\\mathit{#1}', 1],
+                    today: '\\text{today}'
+                }
+            },
+            startup: {
+                ready: () => {
+                    console.log('MathJax is loaded and ready for testing');
+                    MathJax.startup.defaultReady();
+                    window.mathJaxReady = true;
+                }
             }
         };
+        window.mathJaxReady = false;
     </script>
     <script src="lib/mathjax-tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .success { border-color: #4caf50; background-color: #f0f8f0; }
+        .error { border-color: #f44336; background-color: #fff0f0; }
+    </style>
 </head>
 <body>
-    <h1>MathJax Local Test</h1>
-    <p>Inline math: $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$</p>
-    <p>Display math:</p>
-    $$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+    <h1>🧮 MathJax Local Test - Complete Version</h1>
     
+    <div class="test-section">
+        <h2>Basic Math Test</h2>
+        <p>Inline math: $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$</p>
+        <p>Display math:</p>
+        $$\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}$$
+    </div>
+
+    <div class="test-section">
+        <h2>Advanced Mathematical Expressions</h2>
+        <p>Matrix operations:</p>
+        $$\begin{pmatrix} a & b \\ c & d \end{pmatrix} \begin{pmatrix} e \\ f \end{pmatrix} = \begin{pmatrix} ae + bf \\ ce + df \end{pmatrix}$$
+        
+        <p>Summation and limits:</p>
+        $$\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}$$
+        
+        <p>Complex fractions and symbols:</p>
+        $$p(k|q) = \text{softmax}\left([q^\top k_1; q^\top k_2; \ldots; q^\top k_n]\right)$$
+    </div>
+
+    <div class="test-section">
+        <h2>AMS Symbols and Special Characters</h2>
+        <p>Set theory and logic:</p>
+        $$\forall x \in \mathbb{R}, \exists y \in \mathbb{N} : x < y$$
+        
+        <p>Greek letters and operators:</p>
+        $$\alpha + \beta = \gamma \quad \text{and} \quad \nabla \cdot \vec{F} = \rho$$
+        
+        <p>Arrows and relations:</p>
+        $$A \subseteq B \Rightarrow |A| \leq |B|$$
+    </div>
+
+    <div class="test-section">
+        <h2>Font Test (Different Styles)</h2>
+        <p>Regular math: $abc + xyz = 123$</p>
+        <p>Bold math: $\mathbf{abc + xyz = 123}$</p>
+        <p>Italic math: $\mathit{abc + xyz = 123}$</p>
+        <p>Script style: $\mathscr{ABC}$ (if available)</p>
+        <p>Fraktur style: $\mathfrak{ABC}$ (if available)</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Size Variations</h2>
+        <p>Different sizes in display mode:</p>
+        $$\left( \frac{1}{2} \right)^{\left( \frac{3}{4} \right)^{\left( \frac{5}{6} \right)}}$$
+        
+        <p>Large operators:</p>
+        $$\iiint_V f(x,y,z) \, dx \, dy \, dz = \int_0^1 \int_0^1 \int_0^1 f(x,y,z) \, dx \, dy \, dz$$
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, checking MathJax status...');
             console.log('MathJax object:', window.MathJax);
             console.log('MathJax typesetPromise:', window.MathJax ? window.MathJax.typesetPromise : 'undefined');
+            console.log('MathJax ready flag:', window.mathJaxReady);
+            
+            // Check for font loading errors
+            window.addEventListener('error', function(e) {
+                if (e.target.tagName === 'LINK' || e.target.tagName === 'SCRIPT') {
+                    console.error('Resource loading error:', e.target.src || e.target.href);
+                }
+            }, true);
+            
+            // Monitor MathJax processing
+            if (window.MathJax && window.MathJax.startup) {
+                window.MathJax.startup.promise.then(function() {
+                    console.log('✅ MathJax startup completed successfully');
+                    
+                    // Add a visual indicator
+                    const indicator = document.createElement('div');
+                    indicator.innerHTML = '✅ <strong>MathJax loaded successfully!</strong> All fonts should be available.';
+                    indicator.style.cssText = 'background:#d4edda;color:#155724;padding:10px;border:1px solid #c3e6cb;border-radius:5px;margin:10px 0;';
+                    document.body.insertBefore(indicator, document.body.firstChild);
+                }).catch(function(err) {
+                    console.error('❌ MathJax startup failed:', err);
+                    
+                    // Add error indicator
+                    const indicator = document.createElement('div');
+                    indicator.innerHTML = '❌ <strong>MathJax failed to load:</strong> ' + err.message;
+                    indicator.style.cssText = 'background:#f8d7da;color:#721c24;padding:10px;border:1px solid #f5c6cb;border-radius:5px;margin:10px 0;';
+                    document.body.insertBefore(indicator, document.body.firstChild);
+                });
+            }
         });
     </script>
 </body>

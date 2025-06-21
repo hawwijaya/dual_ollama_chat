@@ -8,56 +8,6 @@ document.addEventListener('DOMContentLoaded', function() {
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// Configure MathJax - Updated configuration for local loading
-window.MathJax = {
-    tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']],
-        processEscapes: true,
-        processEnvironments: true,
-        packages: {'[+]': ['ams', 'newcommand', 'configmacros']},
-        // Add support for common LaTeX environments
-        environments: {
-            'document': ['', '', 0],  // Ignore document environment
-            'equation': ['\\begin{equation}', '\\end{equation}', 0],
-            'align': ['\\begin{align}', '\\end{align}', 0],
-            'gather': ['\\begin{gather}', '\\end{gather}', 0],
-            'multline': ['\\begin{multline}', '\\end{multline}', 0]
-        },
-        // Ignore common document commands
-        macros: {
-            documentclass: ['', 1],
-            usepackage: ['', 1],
-            title: ['', 1],
-            author: ['', 1],
-            date: ['', 1],
-            maketitle: '',
-            section: ['', 1],
-            subsection: ['', 1],
-            subsubsection: ['', 1],
-            textbf: ['\\mathbf{#1}', 1],
-            textit: ['\\mathit{#1}', 1],
-            today: '\\text{today}'
-        }
-    },
-    options: {
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-        ignoreHtmlClass: 'tex2jax_ignore',
-        processHtmlClass: 'tex2jax_process'
-    },
-    startup: {
-        ready: () => {
-            console.log('MathJax is loaded and ready (local)');
-            MathJax.startup.defaultReady();
-            // Set a flag to indicate MathJax is ready
-            window.mathJaxReady = true;
-        }
-    }
-};
-
-// Add a global flag to track MathJax readiness
-window.mathJaxReady = false;
-
 // Function to wait for MathJax to be ready (updated for local loading)
 function waitForMathJax(callback, timeout = 5000) {
     const startTime = Date.now();
@@ -71,20 +21,8 @@ function waitForMathJax(callback, timeout = 5000) {
             setTimeout(check, 50); // Check more frequently for local loading
         }
     };
-    
-    check();
+      check();
 }
-
-// Initialize MathJax when the script loads
-document.addEventListener('DOMContentLoaded', function() {
-    // MathJax should be available since it's loaded synchronously
-    if (window.MathJax) {
-        console.log('MathJax loaded locally and ready');
-        window.mathJaxReady = true;
-    } else {
-        console.warn('MathJax not found - check if lib/mathjax-tex-mml-chtml.js exists');
-    }
-});
 
 // Configure marked for markdown parsing
 marked.setOptions({

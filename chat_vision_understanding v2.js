@@ -1225,15 +1225,21 @@ async function handleFileUpload(event) {
     if (!file) return;
 
     uploadedFileName = file.name;
-    uploadedFileType = file.type;
-
-    // Reset all preview states
+    uploadedFileType = file.type;    // Reset all preview states
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('pdfPreview').style.display = 'none';
     document.getElementById('svgPreview').style.display = 'none';
     document.getElementById('csvPreview').style.display = 'none';
     document.getElementById('xlsxPreview').style.display = 'none';
     document.getElementById('imageEnhancementPanel').classList.remove('active');
+    
+    // Clear any existing spreadsheet previews
+    const csvPreview = document.getElementById('csvPreview');
+    const xlsxPreview = document.getElementById('xlsxPreview');
+    const existingTable1 = csvPreview.querySelector('.spreadsheet-preview');
+    const existingTable2 = xlsxPreview.querySelector('.spreadsheet-preview');
+    if (existingTable1) existingTable1.remove();
+    if (existingTable2) existingTable2.remove();
 
     if (file.type === 'application/pdf') {
         document.getElementById('pdfFileName').textContent = file.name;
@@ -1266,8 +1272,7 @@ async function handleFileUpload(event) {
                     reader.readAsDataURL(file);
                     } catch (error) {
                         console.error('SVG processing failed:', error);
-                    }
-                    } else if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
+                    }                        } else if (file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv')) {
                         uploadedFileType = 'text/csv';
                         document.getElementById('csvFileName').textContent = file.name;
                         document.getElementById('csvPreview').style.display = 'block';
@@ -1275,6 +1280,7 @@ async function handleFileUpload(event) {
 
                         try {
                             await processCSV(file);
+                            updateSpreadsheetPreview('csv');
                             const reader = new FileReader();
                             reader.onload = function(e) {
                                 uploadedFileBase64 = e.target.result.split(',')[1];
@@ -1282,8 +1288,7 @@ async function handleFileUpload(event) {
                             reader.readAsDataURL(file);
                             } catch (error) {
                                 console.error('CSV processing failed:', error);
-                            }
-                        } else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                            }                        } else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
                         file.type === 'application/vnd.ms-excel' ||
                         file.name.toLowerCase().endsWith('.xlsx') ||
                         file.name.toLowerCase().endsWith('.xls')) {
@@ -1294,6 +1299,7 @@ async function handleFileUpload(event) {
 
                             try {
                                 await processExcel(file);
+                                updateSpreadsheetPreview('xlsx');
                                 const reader = new FileReader();
                                 reader.onload = function(e) {
                                     uploadedFileBase64 = e.target.result.split(',')[1];
@@ -1353,7 +1359,7 @@ async function processCSV(file) {
                     sheets: 1,
                     sheetNames: ['Sheet1']
                 };
-                  console.log('CSV processed successfully:', spreadsheetData.summary);
+                  console.log('CSV processed successfully:', spreadsheetStats);
                 resolve(spreadsheetData);
             } catch (error) {
                 console.error('CSV processing error:', error);
@@ -1915,9 +1921,7 @@ function removeFile() {
     document.getElementById('csvPreview').style.display = 'none';
     document.getElementById('xlsxPreview').style.display = 'none';
     document.getElementById('imageEnhancementPanel').classList.remove('active');
-    document.getElementById('imagePreviewContainer').style.display = 'none';
-
-    // Explicitly remove detailed previews from the filePreview container
+    document.getElementById('imagePreviewContainer').style.display = 'none';    // Explicitly remove detailed previews from the filePreview container
     const filePreviewDiv = document.getElementById('filePreview');
     if (filePreviewDiv) {
         const pdfContentPreview = filePreviewDiv.querySelector('.pdf-content-preview');
@@ -1929,6 +1933,14 @@ function removeFile() {
         const spreadsheetPreview = filePreviewDiv.querySelector('.spreadsheet-preview');
         if (spreadsheetPreview) spreadsheetPreview.remove();
     }
+    
+    // Clear spreadsheet previews from CSV and Excel preview containers
+    const csvPreview = document.getElementById('csvPreview');
+    const xlsxPreview = document.getElementById('xlsxPreview');
+    const csvTable = csvPreview?.querySelector('.spreadsheet-preview');
+    const xlsxTable = xlsxPreview?.querySelector('.spreadsheet-preview');
+    if (csvTable) csvTable.remove();
+    if (xlsxTable) xlsxTable.remove();
 
     // Remove processing status divs
     const statusDivs = ['pdfProcessingStatus', 'svgProcessingStatus', 'csvProcessingStatus', 'opencvProcessingStatus'];
@@ -2159,6 +2171,106 @@ async function sendMessageWithModel(modelNumber) {
                                         messageInput.focus();
                                     }
                                 }
+
+// Function to update spreadsheet preview in the UI
+function updateSpreadsheetPreview(fileType) {
+    if (!spreadsheetData || spreadsheetData.length === 0) return;
+
+    const previewId = fileType === 'csv' ? 'csvPreview' : 'xlsxPreview';
+    const previewElement = document.getElementById(previewId);
+    
+    if (!previewElement) return;
+
+    // Create table container
+    let tableContainer = previewElement.querySelector('.spreadsheet-preview');
+    if (!tableContainer) {
+        tableContainer = document.createElement('div');
+        tableContainer.className = 'spreadsheet-preview';
+        previewElement.appendChild(tableContainer);
+    }
+
+    // Clear existing content
+    tableContainer.innerHTML = '';
+
+    // Create stats info
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'spreadsheet-stats';
+    statsDiv.textContent = `${spreadsheetStats.rows} rows × ${spreadsheetStats.columns} columns`;
+    if (spreadsheetStats.sheets > 1) {
+        statsDiv.textContent += ` (${spreadsheetStats.sheets} sheets)`;
+    }
+    tableContainer.appendChild(statsDiv);
+
+    // Create table
+    const table = document.createElement('table');
+    
+    // Determine how many columns and rows to show
+    const maxCols = Math.min(6, spreadsheetStats.columns);
+    const maxRows = Math.min(5, spreadsheetData.length);
+
+    // Add headers (first row or generated column headers)
+    const headerRow = document.createElement('tr');
+    const firstRow = spreadsheetData[0] || [];
+    const hasHeaders = firstRow.every(cell => typeof cell === 'string' && cell.trim().length > 0);
+    
+    for (let j = 0; j < maxCols; j++) {
+        const th = document.createElement('th');
+        if (hasHeaders && firstRow[j]) {
+            th.textContent = String(firstRow[j]).substring(0, 15); // Limit header length
+        } else {
+            th.textContent = String.fromCharCode(65 + j); // A, B, C, etc.
+        }
+        headerRow.appendChild(th);
+    }
+    table.appendChild(headerRow);
+
+    // Add data rows
+    const startRow = hasHeaders ? 1 : 0;
+    for (let i = startRow; i < maxRows && i < spreadsheetData.length; i++) {
+        const row = spreadsheetData[i] || [];
+        const tr = document.createElement('tr');
+        
+        for (let j = 0; j < maxCols; j++) {
+            const td = document.createElement('td');
+            const cellValue = row[j];
+            
+            if (cellValue !== null && cellValue !== undefined) {
+                let displayValue = String(cellValue);
+                // Truncate long values
+                if (displayValue.length > 20) {
+                    displayValue = displayValue.substring(0, 17) + '...';
+                }
+                td.textContent = displayValue;
+            } else {
+                td.textContent = '';
+            }
+            td.title = String(cellValue || ''); // Full value in tooltip
+            tr.appendChild(td);
+        }
+        table.appendChild(tr);
+    }
+
+    tableContainer.appendChild(table);
+
+    // Add "more data" indicator if needed
+    if (spreadsheetData.length > maxRows || spreadsheetStats.columns > maxCols) {
+        const moreInfo = document.createElement('div');
+        moreInfo.className = 'spreadsheet-stats';
+        moreInfo.style.fontSize = '10px';
+        moreInfo.style.fontStyle = 'italic';
+        
+        let moreText = '';
+        if (spreadsheetData.length > maxRows) {
+            moreText += `+${spreadsheetData.length - maxRows} more rows`;
+        }
+        if (spreadsheetStats.columns > maxCols) {
+            if (moreText) moreText += ', ';
+            moreText += `+${spreadsheetStats.columns - maxCols} more columns`;
+        }
+        moreInfo.textContent = moreText;
+        tableContainer.appendChild(moreInfo);
+    }
+}
 
 // Helper function to convert spreadsheet data to text
 function convertSpreadsheetToText(data, stats) {

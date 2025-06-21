@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSV/Excel Preview Test</title>
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .preview-demo {
+            border: 2px solid #007acc;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+            margin: 20px 0;
+        }
+        .demo-title {
+            font-weight: bold;
+            color: #007acc;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🦙🦙 Dual Ollama Chat - CSV/Excel Preview Feature</h1>
+        
+        <h2>📋 What's New:</h2>
+        <ul>
+            <li>✅ CSV files now show data preview with table</li>
+            <li>✅ Excel files (.xlsx, .xls) show data preview with table</li>
+            <li>✅ Display file statistics (rows × columns)</li>
+            <li>✅ Show first few rows and columns of data</li>
+            <li>✅ Responsive table with proper styling</li>
+        </ul>
+
+        <div class="preview-demo">
+            <div class="demo-title">📊 Preview Example:</div>
+            <div class="spreadsheet-stats">7 rows × 10 columns</div>
+            <div class="spreadsheet-preview">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+                    <tr>
+                        <th style="border: 1px solid #ddd; padding: 4px 6px; background: #f8f9fa; font-weight: 600;">Median age</th>
+                        <th style="border: 1px solid #ddd; padding: 4px 6px; background: #f8f9fa; font-weight: 600;">1950</th>
+                        <th style="border: 1px solid #ddd; padding: 4px 6px; background: #f8f9fa; font-weight: 600;">1955</th>
+                        <th style="border: 1px solid #ddd; padding: 4px 6px; background: #f8f9fa; font-weight: 600;">1960</th>
+                        <th style="border: 1px solid #ddd; padding: 4px 6px; background: #f8f9fa; font-weight: 600;">1965</th>
+                        <th style="border: 1px solid #ddd; padding: 4px 6px; background: #f8f9fa; font-weight: 600;">1970</th>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">Afghanistan</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.597</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.462</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.311</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.193</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">17.994</td>
+                    </tr>
+                    <tr style="background: #f8f9fa;">
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">Albania</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">20.64</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">20.202</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">19.677</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.955</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.844</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">Algeria</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">19.927</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">19.307</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">18.17</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">16.742</td>
+                        <td style="border: 1px solid #ddd; padding: 4px 6px;">15.808</td>
+                    </tr>
+                </table>
+                <div style="font-size: 10px; font-style: italic; margin-top: 8px; color: #666;">+3 more rows, +4 more columns</div>
+            </div>
+        </div>
+
+        <h2>🔧 Technical Implementation:</h2>
+        <ul>
+            <li><strong>processCSV()</strong> - Parses CSV files with proper quote handling</li>
+            <li><strong>processExcel()</strong> - Uses SheetJS library to read Excel files</li>
+            <li><strong>updateSpreadsheetPreview()</strong> - Creates HTML table preview</li>
+            <li><strong>Enhanced CSS</strong> - Styled tables with alternating row colors</li>
+        </ul>
+
+        <h2>📁 Test Files:</h2>
+        <p>Use the created <code>test_data.csv</code> file to test the functionality.</p>
+        
+        <h2>🎯 Usage:</h2>
+        <ol>
+            <li>Open <code>Dual_ollama_Chat.html</code></li>
+            <li>Click the 📎 attachment button</li>
+            <li>Select a CSV or Excel file</li>
+            <li>See the data preview appear below the filename</li>
+        </ol>
+    </div>
+</body>
+</html>

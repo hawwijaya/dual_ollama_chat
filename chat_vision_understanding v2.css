@@ -592,22 +592,23 @@
             gap: 8px;
             margin-top: 8px;
         }
-        
-        .spreadsheet-preview {
+          .spreadsheet-preview {
             max-height: 200px;
             overflow: auto;
-            background: #f8f9fa;
+            background: #ffffff;
             border: 1px solid #dee2e6;
             border-radius: 6px;
             padding: 8px;
             margin-top: 8px;
             font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .spreadsheet-preview table {
             width: 100%;
             border-collapse: collapse;
             font-size: 11px;
+            background: white;
         }
         
         .spreadsheet-preview th,
@@ -618,23 +619,35 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 100px;
+            max-width: 120px;
+            font-family: 'Courier New', monospace;
         }
         
         .spreadsheet-preview th {
-            background: #e9ecef;
+            background: #f8f9fa;
             font-weight: 600;
             position: sticky;
             top: 0;
+            color: #495057;
+            border-bottom: 2px solid #007acc;
+        }
+        
+        .spreadsheet-preview td {
+            background: white;
+        }
+        
+        .spreadsheet-preview tr:nth-child(even) td {
+            background: #f8f9fa;
         }
         
         .spreadsheet-stats {
             font-size: 10px;
             color: #666;
-            margin-top: 4px;
+            margin-bottom: 8px;
             padding: 4px 8px;
             background: #e9ecef;
             border-radius: 4px;
+            font-weight: 600;
         }
 
         /* Add image enhancement styles */

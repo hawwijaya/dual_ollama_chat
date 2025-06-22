@@ -1488,10 +1488,257 @@ async function processExcel(file) {
                 
                 resolve(spreadsheetData);
             }
-        };
-        reader.onerror = () => reject(new Error('Failed to read Excel file'));
+        };        reader.onerror = () => reject(new Error('Failed to read Excel file'));
         reader.readAsArrayBuffer(file);
     });
+}
+
+// New: PDF processing functions
+async function processPDF(file) {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
+        const extractedImages = [];
+        let extractedText = '';
+        
+        // Show processing status
+        showPDFProcessingStatus('Processing PDF pages...');
+        
+        // Process each page - extract both text and convert to images
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            
+            // Extract text content
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            if (pageText.trim()) {
+                extractedText += `\n--- Page ${pageNum} ---\n${pageText.trim()}\n`;
+            }
+            
+            // Convert page to image
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+            
+            // Convert canvas to base64
+            const imageDataUrl = canvas.toDataURL('image/png');
+            const base64Data = imageDataUrl.split(',')[1];
+            
+            extractedImages.push({
+                page: pageNum,
+                data: base64Data,
+                type: 'image/png'
+            });
+            
+            // Update progress
+            showPDFProcessingStatus(`Processed page ${pageNum}/${pdf.numPages}...`);
+        }
+        
+        pdfTextContent = extractedText.trim() || null;
+        pdfImageContents = extractedImages;
+        
+        showPDFProcessingStatus('PDF processing complete!', true);
+        updatePDFPreview();
+        
+        return { text: pdfTextContent, images: pdfImageContents };
+        
+    } catch (error) {
+        console.error('Error processing PDF:', error);
+        showPDFProcessingStatus('Error processing PDF: ' + error.message, false, true);
+        throw error;
+    }
+}
+
+function showPDFProcessingStatus(message, complete = false, error = false) {
+    let statusDiv = document.getElementById('pdfProcessingStatus');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'pdfProcessingStatus';
+        statusDiv.className = 'pdf-processing';
+        statusDiv.style.cssText = 'margin: 8px 0; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 12px; background: #f8f9fa; color: #495057;';
+        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
+    }
+    
+    if (error) {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.borderColor = '#f5c6cb';
+        statusDiv.style.color = '#721c24';
+        statusDiv.innerHTML = `❌ ${message}`;
+    } else if (complete) {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.borderColor = '#c3e6cb';
+        statusDiv.style.color = '#155724';
+        statusDiv.innerHTML = `✅ ${message}`;
+        setTimeout(() => {
+            if (statusDiv.parentNode) {
+                statusDiv.remove();
+            }
+        }, 3000);
+    } else {
+        statusDiv.innerHTML = `<div style="display:inline-block;width:16px;height:16px;border:2px solid #f3f3f3;border-top:2px solid #3498db;border-radius:50%;animation:spin 2s linear infinite;margin-right:8px;"></div> ${message}`;
+    }
+}
+
+function updatePDFPreview() {
+    const container = document.getElementById('filePreview');
+    
+    // Remove existing preview content
+    const existingContent = container.querySelector('.pdf-content-preview');
+    const existingImages = container.querySelector('.pdf-images-preview');
+    if (existingContent) existingContent.remove();
+    if (existingImages) existingImages.remove();
+    
+    // Show text preview if available
+    if (pdfTextContent) {
+        const textDiv = document.createElement('div');
+        textDiv.className = 'pdf-content-preview';
+        textDiv.style.cssText = 'margin: 8px 0; padding: 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px; max-height: 100px; overflow-y: auto;';
+        textDiv.textContent = pdfTextContent.substring(0, 300) + (pdfTextContent.length > 300 ? '...' : '');
+        container.appendChild(textDiv);
+    }
+    
+    // Show image thumbnails
+    if (pdfImageContents.length > 0) {
+        const imagesDiv = document.createElement('div');
+        imagesDiv.className = 'pdf-images-preview';
+        imagesDiv.style.cssText = 'display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap;';
+        
+        pdfImageContents.slice(0, 4).forEach((img, index) => {
+            const thumb = document.createElement('img');
+            thumb.src = 'data:' + img.type + ';base64,' + img.data;
+            thumb.className = 'pdf-image-thumb';
+            thumb.style.cssText = 'width: 60px; height: 80px; object-fit: cover; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer;';
+            thumb.title = `Page ${img.page}`;
+            thumb.onclick = () => {
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;cursor:pointer;';
+                const largeImg = document.createElement('img');
+                largeImg.src = thumb.src;
+                largeImg.style.cssText = 'max-width:90%;max-height:90%;border-radius:8px;';
+                modal.appendChild(largeImg);
+                modal.onclick = () => modal.remove();
+                document.body.appendChild(modal);
+            };
+            imagesDiv.appendChild(thumb);
+        });
+        
+        if (pdfImageContents.length > 4) {
+            const moreDiv = document.createElement('div');
+            moreDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;width:60px;height:80px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;font-size:10px;color:#666;text-align:center;';
+            moreDiv.textContent = `+${pdfImageContents.length - 4} more`;
+            imagesDiv.appendChild(moreDiv);
+        }
+        
+        container.appendChild(imagesDiv);
+    }
+}
+
+// New: SVG processing functions
+async function processSVG(file) {
+    try {
+        const svgText = await file.text();
+        
+        // Show processing status
+        showSVGProcessingStatus('Converting SVG to image...');
+        
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            img.onload = function() {
+                // Set canvas size to image dimensions
+                canvas.width = img.width || 800;
+                canvas.height = img.height || 600;
+                
+                // Draw the SVG image onto canvas
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                
+                // Convert to base64 PNG
+                const dataUrl = canvas.toDataURL('image/png');
+                svgConvertedBase64 = dataUrl.split(',')[1];
+                
+                showSVGProcessingStatus('SVG conversion complete!', true);
+                resolve({ convertedBase64: svgConvertedBase64 });
+            };
+            
+            img.onerror = function(error) {
+                console.error('SVG conversion error:', error);
+                showSVGProcessingStatus('Error converting SVG', false, true);
+                reject(error);
+            };
+            
+            // Create blob URL for the SVG
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            img.src = url;
+            
+            // Clean up the blob URL after loading
+            img.onload = function() {
+                URL.revokeObjectURL(url);
+                // Set canvas size to image dimensions
+                canvas.width = img.width || 800;
+                canvas.height = img.height || 600;
+                
+                // Draw the SVG image onto canvas
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                
+                // Convert to base64 PNG
+                const dataUrl = canvas.toDataURL('image/png');
+                svgConvertedBase64 = dataUrl.split(',')[1];
+                
+                showSVGProcessingStatus('SVG conversion complete!', true);
+                resolve({ convertedBase64: svgConvertedBase64 });
+            };
+        });
+        
+    } catch (error) {
+        console.error('Error processing SVG:', error);
+        showSVGProcessingStatus('Error processing SVG: ' + error.message, false, true);
+        throw error;
+    }
+}
+
+function showSVGProcessingStatus(message, complete = false, error = false) {
+    let statusDiv = document.getElementById('svgProcessingStatus');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'svgProcessingStatus';
+        statusDiv.className = 'svg-processing';
+        statusDiv.style.cssText = 'margin: 8px 0; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 12px; background: #f8f9fa; color: #495057;';
+        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
+    }
+    
+    if (error) {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.borderColor = '#f5c6cb';
+        statusDiv.style.color = '#721c24';
+        statusDiv.innerHTML = `❌ ${message}`;
+    } else if (complete) {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.borderColor = '#c3e6cb';
+        statusDiv.style.color = '#155724';
+        statusDiv.innerHTML = `✅ ${message}`;
+        setTimeout(() => {
+            if (statusDiv.parentNode) {
+                statusDiv.remove();
+            }
+        }, 3000);
+    } else {
+        statusDiv.innerHTML = `<div style="display:inline-block;width:16px;height:16px;border:2px solid #f3f3f3;border-top:2px solid #3498db;border-radius:50%;animation:spin 2s linear infinite;margin-right:8px;"></div> ${message}`;
+    }
 }
 
                                 // New: OpenCV-inspired image processing with configurable resolution
@@ -2420,94 +2667,251 @@ function progressiveResize(sourceCanvas, targetWidth, targetHeight) {
     }
 }
 
-// Auto-resize textarea
-document.getElementById('messageInput').addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-});
-
-// Enable activate button when model is selected
-document.getElementById('modelSelect').addEventListener('change', updateActivateButtons);
-document.getElementById('modelSelect2').addEventListener('change', updateActivateButtons);
-
-// Auto-detect models on page load
-window.addEventListener('load', () => {
-    setTimeout(async () => {
-        await detectModels(); // This will also call updateActiveModelsDisplay in its finally block
-    }, 1000);
-    updateActiveModelsDisplay(); // Initial call to set "None, None" before detection
-    updateModelButtons(); // Initialize model button states
-});
-
-function handleKeyDown(event) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        // Send to first available model, prioritizing Model 1
-        if (currentModel1) {
-            sendMessageWithModel(1);
-        } else if (currentModel2) {
-            sendMessageWithModel(2);
+// New: PDF processing functions
+async function processPDF(file) {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
+        const extractedImages = [];
+        let extractedText = '';
+        
+        // Show processing status
+        showPDFProcessingStatus('Processing PDF pages...');
+        
+        // Process each page - extract both text and convert to images
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            
+            // Extract text content
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            if (pageText.trim()) {
+                extractedText += `\n--- Page ${pageNum} ---\n${pageText.trim()}\n`;
+            }
+            
+            // Convert page to image
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+            
+            // Convert canvas to base64
+            const imageDataUrl = canvas.toDataURL('image/png');
+            const base64Data = imageDataUrl.split(',')[1];
+            
+            extractedImages.push({
+                page: pageNum,
+                data: base64Data,
+                type: 'image/png'
+            });
+            
+            // Update progress
+            showPDFProcessingStatus(`Processed page ${pageNum}/${pdf.numPages}...`);
         }
+        
+        pdfTextContent = extractedText.trim() || null;
+        pdfImageContents = extractedImages;
+        
+        showPDFProcessingStatus('PDF processing complete!', true);
+        updatePDFPreview();
+        
+        return { text: pdfTextContent, images: pdfImageContents };
+        
+    } catch (error) {
+        console.error('Error processing PDF:', error);
+        showPDFProcessingStatus('Error processing PDF: ' + error.message, false, true);
+        throw error;
     }
 }
 
-
-function eventHandler3(event) {
-    activateModel(1);
+function showPDFProcessingStatus(message, complete = false, error = false) {
+    let statusDiv = document.getElementById('pdfProcessingStatus');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'pdfProcessingStatus';
+        statusDiv.className = 'pdf-processing';
+        statusDiv.style.cssText = 'margin: 8px 0; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 12px; background: #f8f9fa; color: #495057;';
+        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
+    }
+    
+    if (error) {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.borderColor = '#f5c6cb';
+        statusDiv.style.color = '#721c24';
+        statusDiv.innerHTML = `❌ ${message}`;
+    } else if (complete) {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.borderColor = '#c3e6cb';
+        statusDiv.style.color = '#155724';
+        statusDiv.innerHTML = `✅ ${message}`;
+        setTimeout(() => {
+            if (statusDiv.parentNode) {
+                statusDiv.remove();
+            }
+        }, 3000);
+    } else {
+        statusDiv.innerHTML = `<div style="display:inline-block;width:16px;height:16px;border:2px solid #f3f3f3;border-top:2px solid #3498db;border-radius:50%;animation:spin 2s linear infinite;margin-right:8px;"></div> ${message}`;
+    }
 }
 
-
-function eventHandler4(event) {
-    activateModel(2);
+function updatePDFPreview() {
+    const container = document.getElementById('filePreview');
+    
+    // Remove existing preview content
+    const existingContent = container.querySelector('.pdf-content-preview');
+    const existingImages = container.querySelector('.pdf-images-preview');
+    if (existingContent) existingContent.remove();
+    if (existingImages) existingImages.remove();
+    
+    // Show text preview if available
+    if (pdfTextContent) {
+        const textDiv = document.createElement('div');
+        textDiv.className = 'pdf-content-preview';
+        textDiv.style.cssText = 'margin: 8px 0; padding: 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; font-size: 11px; max-height: 100px; overflow-y: auto;';
+        textDiv.textContent = pdfTextContent.substring(0, 300) + (pdfTextContent.length > 300 ? '...' : '');
+        container.appendChild(textDiv);
+    }
+    
+    // Show image thumbnails
+    if (pdfImageContents.length > 0) {
+        const imagesDiv = document.createElement('div');
+        imagesDiv.className = 'pdf-images-preview';
+        imagesDiv.style.cssText = 'display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap;';
+        
+        pdfImageContents.slice(0, 4).forEach((img, index) => {
+            const thumb = document.createElement('img');
+            thumb.src = 'data:' + img.type + ';base64,' + img.data;
+            thumb.className = 'pdf-image-thumb';
+            thumb.style.cssText = 'width: 60px; height: 80px; object-fit: cover; border: 1px solid #dee2e6; border-radius: 4px; cursor: pointer;';
+            thumb.title = `Page ${img.page}`;
+            thumb.onclick = () => {
+                const modal = document.createElement('div');
+                modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:1000;cursor:pointer;';
+                const largeImg = document.createElement('img');
+                largeImg.src = thumb.src;
+                largeImg.style.cssText = 'max-width:90%;max-height:90%;border-radius:8px;';
+                modal.appendChild(largeImg);
+                modal.onclick = () => modal.remove();
+                document.body.appendChild(modal);
+            };
+            imagesDiv.appendChild(thumb);
+        });
+        
+        if (pdfImageContents.length > 4) {
+            const moreDiv = document.createElement('div');
+            moreDiv.style.cssText = 'display:flex;align-items:center;justify-content:center;width:60px;height:80px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:4px;font-size:10px;color:#666;text-align:center;';
+            moreDiv.textContent = `+${pdfImageContents.length - 4} more`;
+            imagesDiv.appendChild(moreDiv);
+        }
+        
+        container.appendChild(imagesDiv);
+    }
 }
 
-
-function eventHandler5(event) {
-    handleFileUpload(event);
+// New: SVG processing functions
+async function processSVG(file) {
+    try {
+        const svgText = await file.text();
+        
+        // Show processing status
+        showSVGProcessingStatus('Converting SVG to image...');
+        
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            img.onload = function() {
+                // Set canvas size to image dimensions
+                canvas.width = img.width || 800;
+                canvas.height = img.height || 600;
+                
+                // Draw the SVG image onto canvas
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                
+                // Convert to base64 PNG
+                const dataUrl = canvas.toDataURL('image/png');
+                svgConvertedBase64 = dataUrl.split(',')[1];
+                
+                showSVGProcessingStatus('SVG conversion complete!', true);
+                resolve({ convertedBase64: svgConvertedBase64 });
+            };
+            
+            img.onerror = function(error) {
+                console.error('SVG conversion error:', error);
+                showSVGProcessingStatus('Error converting SVG', false, true);
+                reject(error);
+            };
+            
+            // Create blob URL for the SVG
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            img.src = url;
+            
+            // Clean up the blob URL after loading
+            img.onload = function() {
+                URL.revokeObjectURL(url);
+                // Set canvas size to image dimensions
+                canvas.width = img.width || 800;
+                canvas.height = img.height || 600;
+                
+                // Draw the SVG image onto canvas
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                
+                // Convert to base64 PNG
+                const dataUrl = canvas.toDataURL('image/png');
+                svgConvertedBase64 = dataUrl.split(',')[1];
+                
+                showSVGProcessingStatus('SVG conversion complete!', true);
+                resolve({ convertedBase64: svgConvertedBase64 });
+            };
+        });
+        
+    } catch (error) {
+        console.error('Error processing SVG:', error);
+        showSVGProcessingStatus('Error processing SVG: ' + error.message, false, true);
+        throw error;
+    }
 }
 
-
-function eventHandler6(event) {
-    document.getElementById('imageInput').click();
-}
-
-
-function eventHandler7(event) {
-    handleKeyDown(event);
-}
-
-
-function eventHandler15(event) {
-    applyPreset('auto');
-}
-
-
-function eventHandler16(event) {
-    applyPreset('vivid');
-}
-
-
-function eventHandler17(event) {
-    applyPreset('soft');
-}
-
-
-function eventHandler18(event) {
-    applyPreset('sharp');
-}
-
-
-function eventHandler19(event) {
-    applyPreset('vintage');
-}
-
-
-function eventHandler21(event) {
-    showImageModal(this.src);
-}
-
-
-function eventHandler22(event) {
-    showImageModal(this.src);
+function showSVGProcessingStatus(message, complete = false, error = false) {
+    let statusDiv = document.getElementById('svgProcessingStatus');
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'svgProcessingStatus';
+        statusDiv.className = 'svg-processing';
+        statusDiv.style.cssText = 'margin: 8px 0; padding: 8px 12px; border: 1px solid #dee2e6; border-radius: 6px; font-size: 12px; background: #f8f9fa; color: #495057;';
+        document.getElementById('imagePreviewContainer').appendChild(statusDiv);
+    }
+    
+    if (error) {
+        statusDiv.style.background = '#f8d7da';
+        statusDiv.style.borderColor = '#f5c6cb';
+        statusDiv.style.color = '#721c24';
+        statusDiv.innerHTML = `❌ ${message}`;
+    } else if (complete) {
+        statusDiv.style.background = '#d4edda';
+        statusDiv.style.borderColor = '#c3e6cb';
+        statusDiv.style.color = '#155724';
+        statusDiv.innerHTML = `✅ ${message}`;
+        setTimeout(() => {
+            if (statusDiv.parentNode) {
+                statusDiv.remove();
+            }
+        }, 3000);
+    } else {
+        statusDiv.innerHTML = `<div style="display:inline-block;width:16px;height:16px;border:2px solid #f3f3f3;border-top:2px solid #3498db;border-radius:50%;animation:spin 2s linear infinite;margin-right:8px;"></div> ${message}`;
+    }
 }
 

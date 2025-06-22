@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Activate Button Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        select, button {
+            padding: 8px 12px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button:disabled {
+            background: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+        button:not(:disabled) {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Activate Button Fix Test</h1>
+    
+    <div class="test-section">
+        <h2>✅ Fixed Issues:</h2>
+        <ul>
+            <li><strong>Event Listeners:</strong> Added change event listeners to model select dropdowns</li>
+            <li><strong>DOMContentLoaded:</strong> Event listeners set up as soon as page loads</li>
+            <li><strong>updateActivateButtons():</strong> Called whenever dropdowns change</li>
+            <li><strong>Auto-assignment:</strong> Activate buttons updated after auto-assignment</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 Simulate Model Selection:</h2>
+        <p>Test the activate button behavior:</p>
+        
+        <div>
+            <label>Model 1:</label>
+            <select id="testModelSelect1">
+                <option value="">Select a model...</option>
+                <option value="llama2">llama2</option>
+                <option value="mistral">mistral</option>
+                <option value="codellama">codellama</option>
+            </select>
+            <button id="testActivateBtn1" disabled>🚀 Activate Model 1</button>
+        </div>
+        
+        <div>
+            <label>Model 2:</label>
+            <select id="testModelSelect2">
+                <option value="">Select a model...</option>
+                <option value="llama2">llama2</option>
+                <option value="mistral">mistral</option>
+                <option value="codellama">codellama</option>
+            </select>
+            <button id="testActivateBtn2" disabled>🚀 Activate Model 2</button>
+        </div>
+        
+        <div id="testStatus" class="status" style="display: none;"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 Expected Behavior:</h2>
+        <ol>
+            <li>Activate buttons should be <strong>disabled (greyed out)</strong> when no model is selected</li>
+            <li>Activate buttons should be <strong>enabled (blue)</strong> when a model is selected</li>
+            <li>This should work immediately when you change the dropdown selection</li>
+            <li>The fix ensures this happens automatically without manual intervention</li>
+        </ol>
+    </div>
+
+    <script>
+        // Simulate the fixed updateActivateButtons function
+        function updateTestActivateButtons() {
+            const modelSelect1 = document.getElementById('testModelSelect1');
+            const activateBtn1 = document.getElementById('testActivateBtn1');
+            activateBtn1.disabled = !modelSelect1.value;
+
+            const modelSelect2 = document.getElementById('testModelSelect2');
+            const activateBtn2 = document.getElementById('testActivateBtn2');
+            activateBtn2.disabled = !modelSelect2.value;
+            
+            // Show status
+            const status = document.getElementById('testStatus');
+            status.style.display = 'block';
+            const enabledCount = (!activateBtn1.disabled ? 1 : 0) + (!activateBtn2.disabled ? 1 : 0);
+            status.className = enabledCount > 0 ? 'status success' : 'status error';
+            status.textContent = `${enabledCount} activate button(s) enabled`;
+        }
+
+        // Set up event listeners (this is what was missing and now fixed)
+        document.addEventListener('DOMContentLoaded', function() {
+            const modelSelect1 = document.getElementById('testModelSelect1');
+            const modelSelect2 = document.getElementById('testModelSelect2');
+            
+            if (modelSelect1) {
+                modelSelect1.addEventListener('change', updateTestActivateButtons);
+            }
+            
+            if (modelSelect2) {
+                modelSelect2.addEventListener('change', updateTestActivateButtons);
+            }
+            
+            // Initial update
+            updateTestActivateButtons();
+        });
+    </script>
+</body>
+</html>

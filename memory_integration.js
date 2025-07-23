@@ -1,183 +1,528 @@
 /**
- * Memory System Integration for Dual Ollama Chat
- * Ensures seamless integration between memory system and existing chat functionality
+ * Memory System Integration
+ * Integrates the memory system with the existing Dual Ollama Chat functionality
  */
 
 class MemoryIntegration {
     constructor() {
-        this.isInitialized = false;
-        this.init();
+        this.autoSaveEnabled = true;
+        this.contextMemoryEnabled = true;
+        this.lastAutoSave = null;
+        
+        this.initializeIntegration();
     }
 
-    init() {
-        // Wait for DOM and memory system to be ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setupIntegration());
-        } else {
-            this.setupIntegration();
+    /**
+     * Initialize memory integration
+     */
+    initializeIntegration() {
+        this.loadSettings();
+        this.setupAutoSave();
+        this.setupContextMemory();
+        this.setupKeyboardShortcuts();
+        this.setupEventListeners();
+    }
+
+    /**
+     * Load memory settings
+     */
+    loadSettings() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('dual_ollama_memory_settings') || '{}');
+            this.autoSaveEnabled = settings.autoSave !== false;
+            this.contextMemoryEnabled = settings.contextMemory !== false;
+        } catch (error) {
+            console.error('Error loading memory settings:', error);
         }
     }
 
-    setupIntegration() {
-        // Ensure memory system is available
-        if (!window.memorySystem || !window.memoryUI) {
-            console.error('Memory system not available');
+    /**
+     * Setup auto-save functionality
+     */
+    setupAutoSave() {
+        if (!this.autoSaveEnabled) return;
+
+        // Auto-save every 30 seconds if there are new messages
+        setInterval(() => {
+            this.autoSaveConversation();
+        }, 30000);
+
+        // Auto-save on page unload
+        window.addEventListener('beforeunload', () => {
+            this.autoSaveConversation();
+        });
+    }
+
+    /**
+     * Setup context memory
+     */
+    setupContextMemory() {
+        if (!this.contextMemoryEnabled) return;
+
+        // Save context when settings change
+        const systemPrompt = document.getElementById('systemPrompt');
+        const imageScalingSelect = document.getElementById('imageScalingSelect');
+
+        systemPrompt?.addEventListener('change', () => {
+            this.saveContext();
+        });
+
+        imageScalingSelect?.addEventListener('change', () => {
+            this.saveContext();
+        });
+    }
+
+    /**
+     * Setup keyboard shortcuts
+     */
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Shift+S: Save conversation
+            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
+                e.preventDefault();
+                this.saveCurrentConversation();
+            }
+
+            // Ctrl+Shift+L: Load last conversation
+            if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+                e.preventDefault();
+                this.loadLastConversation();
+            }
+
+            // Ctrl+Shift+M: Toggle memory panel
+            if (e.ctrlKey && e.shiftKey && e.key === 'M') {
+                e.preventDefault();
+                if (window.memoryUI) {
+                    window.memoryUI.toggleMemoryPanel();
+                }
+            }
+        });
+    }
+
+    /**
+     * Setup event listeners
+     */
+    setupEventListeners() {
+        // Listen for new messages to trigger auto-save
+        const originalAddMessage = window.addMessage;
+        if (originalAddMessage) {
+            window.addMessage = function(...args) {
+                const result = originalAddMessage.apply(this, args);
+                if (window.memoryIntegration) {
+                    window.memoryIntegration.onNewMessage();
+                }
+                return result;
+            };
+        }
+
+        // Listen for new chat
+        const originalStartNewChat = window.startNewChat;
+        if (originalStartNewChat) {
+            window.startNewChat = function(...args) {
+                const result = originalStartNewChat.apply(this, args);
+                if (window.memoryIntegration) {
+                    window.memoryIntegration.onNewChat();
+                }
+                return result;
+            };
+        }
+    }
+
+    /**
+     * Handle new message event
+     */
+    onNewMessage() {
+        if (this.autoSaveEnabled && conversationHistory.length > 0) {
+            this.debounceAutoSave();
+        }
+    }
+
+    /**
+     * Handle new chat event
+     */
+    onNewChat() {
+        // Save previous conversation if it has messages
+        if (conversationHistory.length > 0) {
+            this.saveCurrentConversation();
+        }
+    }
+
+    /**
+     * Debounced auto-save
+     */
+    debounceAutoSave() {
+        clearTimeout(this.autoSaveTimeout);
+        this.autoSaveTimeout = setTimeout(() => {
+            this.autoSaveConversation();
+        }, 2000);
+    }
+
+    /**
+     * Auto-save current conversation
+     */
+    autoSaveConversation() {
+        if (!this.autoSaveEnabled || conversationHistory.length === 0) {
             return;
         }
 
-        // Hook into existing chat functions
-        this.hookIntoChatSystem();
+        const conversationData = this.buildConversationData();
         
-        // Add memory context to system prompts
-        this.enhanceSystemPrompts();
-        
-        // Setup memory cleanup on new chat
-        this.setupNewChatIntegration();
-        
-        this.isInitialized = true;
-        console.log('Memory system integration complete');
-    }
-
-    hookIntoChatSystem() {
-        // Store original functions
-        const originalSendMessageWithModel = window.sendMessageWithModel;
-        const originalAddMessage = window.addMessage;
-        
-        // Hook into sendMessageWithModel to add context
-        window.sendMessageWithModel = async function(modelNumber) {
-            if (!window.memoryIntegration.isInitialized) {
-                return originalSendMessageWithModel.call(this, modelNumber);
-            }
-
-            const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value.trim();
-            if (!message) return;
-
-            // Get relevant context from memory
-            const context = await window.memoryUI.getContextForQuery(message, 
-                modelNumber === 1 ? currentModel1 : currentModel2);
-            
-            // Add context to system prompt if available
-            if (context) {
-                const originalSystemPrompt = document.getElementById('systemPrompt').value;
-                const enhancedPrompt = `${originalSystemPrompt}\n\n${context}`;
-                
-                // Temporarily update system prompt
-                document.getElementById('systemPrompt').value = enhancedPrompt;
-                
-                // Call original function
-                const result = await originalSendMessageWithModel.call(this, modelNumber);
-                
-                // Restore original system prompt
-                document.getElementById('systemPrompt').value = originalSystemPrompt;
-                
-                return result;
-            }
-            
-            return originalSendMessageWithModel.call(this, modelNumber);
-        };
-
-        // Hook into addMessage to store memories
-        window.addMessage = function(content, isUser = false, fileData = null, modelInfo = null) {
-            const result = originalAddMessage.call(this, content, isUser, fileData, modelInfo);
-            
-            if (window.memoryIntegration.isInitialized) {
-                // Store conversation memory
-                const modelName = modelInfo ? modelInfo.name : (isUser ? currentModel1 || currentModel2 : 'assistant');
-                const memoryContent = isUser ? `User: ${content}` : `Assistant: ${content}`;
-                
-                window.memoryUI.addConversationMemory(
-                    memoryContent, 
-                    modelName, 
-                    fileData?.type
-                );
-                
-                // Store semantic knowledge for important content
-                if (!isUser && content.length > 100) {
-                    // Simple heuristic: if response is substantial, store as knowledge
-                    window.memoryUI.addKnowledgeMemory(content, 'general');
-                }
-            }
-            
-            return result;
-        };
-    }
-
-    enhanceSystemPrompts() {
-        // Add memory-aware instructions to system prompt
-        const systemPrompt = document.getElementById('systemPrompt');
-        const originalPrompt = systemPrompt.value;
-        
-        const memoryEnhancedPrompt = originalPrompt + 
-            "\n\nYou have access to previous conversation memories. When relevant, refer to past discussions " +
-            "and maintain consistency with previously shared information. Use the context provided to " +
-            "give more personalized and helpful responses.";
-        
-        systemPrompt.value = memoryEnhancedPrompt;
-    }
-
-    setupNewChatIntegration() {
-        const originalStartNewChat = window.startNewChat;
-        
-        window.startNewChat = async function() {
-            // Clear working memory when starting new chat
-            if (window.memorySystem) {
-                // Remove expired working memories
-                window.memorySystem.memoryStore = window.memorySystem.memoryStore.filter(
-                    memory => memory.type !== 'working' || 
-                    (memory.metadata.expiresAt && memory.metadata.expiresAt > Date.now())
-                );
-                window.memorySystem.saveMemoryStore();
-            }
-            
-            return originalStartNewChat.call(this);
-        };
-    }
-
-    // Utility methods for memory management
-    async getConversationSummary(modelName) {
-        if (!window.memoryUI) return '';
-        return await window.memoryUI.getConversationSummary(modelName);
-    }
-
-    async searchMemories(query, type = null, limit = 10) {
-        if (!window.memorySystem) return [];
-        return await window.memorySystem.retrieveMemories(query, type, limit);
-    }
-
-    exportMemories() {
-        if (!window.memorySystem) return null;
-        return window.memorySystem.exportMemories();
-    }
-
-    importMemories(jsonData) {
-        if (!window.memorySystem) return false;
-        try {
-            window.memorySystem.importMemories(jsonData);
-            return true;
-        } catch (error) {
-            console.error('Failed to import memories:', error);
-            return false;
+        // Only save if conversation has changed
+        const conversationHash = this.hashConversation(conversationData);
+        if (conversationHash === this.lastAutoSave) {
+            return;
         }
+
+        const id = window.memorySystem.saveConversation(conversationData);
+        if (id) {
+            this.lastAutoSave = conversationHash;
+            this.showAutoSaveIndicator();
+        }
+    }
+
+    /**
+     * Save current conversation manually
+     */
+    saveCurrentConversation() {
+        if (conversationHistory.length === 0) {
+            alert('No conversation to save.');
+            return;
+        }
+
+        const conversationData = this.buildConversationData();
+        const id = window.memorySystem.saveConversation(conversationData);
+        
+        if (id) {
+            this.showNotification('Conversation saved successfully!', 'success');
+            if (window.memoryUI) {
+                window.memoryUI.refreshMemoryList();
+            }
+        } else {
+            this.showNotification('Failed to save conversation', 'error');
+        }
+    }
+
+    /**
+     * Build conversation data object
+     */
+    buildConversationData() {
+        return {
+            messages: [...conversationHistory],
+            model1: currentModel1,
+            model2: currentModel2,
+            context: {
+                systemPrompt: document.getElementById('systemPrompt')?.value || '',
+                imageScaling: document.getElementById('imageScalingSelect')?.value || '3508',
+                host: document.getElementById('hostInput')?.value || '127.0.0.1',
+                port: document.getElementById('portInput')?.value || '11434'
+            },
+            fileAttachments: this.getCurrentFileAttachments(),
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
+     * Get current file attachments
+     */
+    getCurrentFileAttachments() {
+        const attachments = [];
+        
+        if (uploadedFileBase64 && uploadedFileType) {
+            attachments.push({
+                type: uploadedFileType,
+                name: uploadedFileName,
+                data: uploadedFileBase64,
+                textContent: pdfTextContent || null,
+                images: pdfImageContents || []
+            });
+        }
+
+        if (svgConvertedBase64) {
+            attachments.push({
+                type: 'image/svg+xml',
+                name: uploadedFileName,
+                data: svgConvertedBase64
+            });
+        }
+
+        if (spreadsheetData) {
+            attachments.push({
+                type: 'spreadsheet',
+                name: uploadedFileName,
+                data: spreadsheetData,
+                stats: spreadsheetStats
+            });
+        }
+
+        return attachments;
+    }
+
+    /**
+     * Load last conversation
+     */
+    loadLastConversation() {
+        const conversations = window.memorySystem.getConversations();
+        if (conversations.length === 0) {
+            alert('No saved conversations found.');
+            return;
+        }
+
+        const lastConversation = conversations[0];
+        this.loadConversation(lastConversation);
+    }
+
+    /**
+     * Load conversation by ID
+     */
+    loadConversation(conversation) {
+        if (!conversation || !conversation.messages) {
+            return;
+        }
+
+        // Clear current chat
+        if (window.startNewChat) {
+            window.startNewChat();
+        }
+
+        // Load messages
+        conversationHistory = [...conversation.messages];
+        
+        // Load context if available
+        if (conversation.context) {
+            const context = conversation.context;
+            
+            if (context.systemPrompt && document.getElementById('systemPrompt')) {
+                document.getElementById('systemPrompt').value = context.systemPrompt;
+            }
+            
+            if (context.imageScaling && document.getElementById('imageScalingSelect')) {
+                document.getElementById('imageScalingSelect').value = context.imageScaling;
+            }
+            
+            if (context.host && document.getElementById('hostInput')) {
+                document.getElementById('hostInput').value = context.host;
+            }
+            
+            if (context.port && document.getElementById('portInput')) {
+                document.getElementById('portInput').value = context.port;
+            }
+        }
+
+        // Load file attachments if available
+        if (conversation.fileAttachments && conversation.fileAttachments.length > 0) {
+            this.loadFileAttachments(conversation.fileAttachments);
+        }
+
+        // Update UI
+        this.loadMessagesToUI(conversationHistory);
+        
+        this.showNotification('Conversation loaded successfully!', 'success');
+    }
+
+    /**
+     * Load file attachments
+     */
+    loadFileAttachments(attachments) {
+        for (const attachment of attachments) {
+            if (attachment.type.startsWith('image/')) {
+                uploadedFileBase64 = attachment.data;
+                uploadedFileType = attachment.type;
+                uploadedFileName = attachment.name;
+                this.updateImagePreview();
+            } else if (attachment.type === 'application/pdf') {
+                pdfTextContent = attachment.textContent || null;
+                pdfImageContents = attachment.images || [];
+                this.updatePDFPreview();
+            } else if (attachment.type === 'image/svg+xml') {
+                svgConvertedBase64 = attachment.data;
+                this.updateSVGPreview();
+            } else if (attachment.type === 'spreadsheet') {
+                spreadsheetData = attachment.data;
+                spreadsheetStats = attachment.stats;
+                this.updateSpreadsheetPreview();
+            }
+        }
+    }
+
+    /**
+     * Load messages to UI
+     */
+    loadMessagesToUI(messages) {
+        const messagesContainer = document.getElementById('messages');
+        if (!messagesContainer) return;
+
+        // Clear existing messages except welcome
+        const welcomeMessage = document.getElementById('staticWelcomeMessage');
+        messagesContainer.innerHTML = '';
+        if (welcomeMessage) {
+            messagesContainer.appendChild(welcomeMessage);
+        }
+
+        // Add messages
+        messages.forEach(msg => {
+            if (window.addMessage) {
+                window.addMessage(msg.content, msg.role === 'user', null, null);
+            }
+        });
+    }
+
+    /**
+     * Update image preview
+     */
+    updateImagePreview() {
+        const imagePreview = document.getElementById('imagePreview');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        
+        if (imagePreview && uploadedFileBase64) {
+            imagePreview.src = `data:${uploadedFileType};base64,${uploadedFileBase64}`;
+            imagePreview.style.display = 'block';
+            if (imagePreviewContainer) {
+                imagePreviewContainer.style.display = 'block';
+            }
+        }
+    }
+
+    /**
+     * Update PDF preview
+     */
+    updatePDFPreview() {
+        const pdfPreview = document.getElementById('pdfPreview');
+        const pdfFileName = document.getElementById('pdfFileName');
+        
+        if (pdfPreview && pdfFileName) {
+            pdfFileName.textContent = uploadedFileName || 'PDF Document';
+            pdfPreview.style.display = 'block';
+        }
+    }
+
+    /**
+     * Update SVG preview
+     */
+    updateSVGPreview() {
+        const svgPreview = document.getElementById('svgPreview');
+        const svgFileName = document.getElementById('svgFileName');
+        
+        if (svgPreview && svgFileName) {
+            svgFileName.textContent = uploadedFileName || 'SVG Document';
+            svgPreview.style.display = 'block';
+        }
+    }
+
+    /**
+     * Update spreadsheet preview
+     */
+    updateSpreadsheetPreview() {
+        const csvPreview = document.getElementById('csvPreview');
+        const xlsxPreview = document.getElementById('xlsxPreview');
+        
+        if (csvPreview && uploadedFileType === 'text/csv') {
+            csvPreview.style.display = 'block';
+        }
+        
+        if (xlsxPreview && (uploadedFileType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                           uploadedFileType === 'application/vnd.ms-excel')) {
+            xlsxPreview.style.display = 'block';
+        }
+    }
+
+    /**
+     * Hash conversation for change detection
+     */
+    hashConversation(conversationData) {
+        const str = JSON.stringify(conversationData);
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32-bit integer
+        }
+        return hash.toString();
+    }
+
+    /**
+     * Show auto-save indicator
+     */
+    showAutoSaveIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'auto-save-indicator';
+        indicator.textContent = '💾 Auto-saved';
+        
+        document.body.appendChild(indicator);
+        
+        setTimeout(() => {
+            indicator.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            indicator.classList.remove('show');
+            setTimeout(() => indicator.remove(), 300);
+        }, 2000);
+    }
+
+    /**
+     * Show notification
+     */
+    showNotification(message, type = 'info') {
+        if (window.memoryUI) {
+            window.memoryUI.showNotification(message, type);
+        } else {
+            alert(message);
+        }
+    }
+
+    /**
+     * Get memory statistics
+     */
+    getMemoryStats() {
+        return window.memorySystem.getMemoryStats();
+    }
+
+    /**
+     * Export memory data
+     */
+    exportMemory() {
+        return window.memorySystem.exportMemory();
+    }
+
+    /**
+     * Import memory data
+     */
+    async importMemory(file) {
+        return await window.memorySystem.importMemory(file);
+    }
+
+    /**
+     * Search conversations
+     */
+    searchConversations(query, limit = 10) {
+        return window.memorySystem.searchConversations(query, limit);
+    }
+
+    /**
+     * Clear all memory
+     */
+    clearAllMemory() {
+        return window.memorySystem.clearAllConversations();
     }
 }
 
-// Initialize memory integration
+// Global memory integration instance
 window.memoryIntegration = new MemoryIntegration();
 
-// Global memory utilities
-window.memoryUtils = {
-    search: (query, type, limit) => window.memoryIntegration.searchMemories(query, type, limit),
-    export: () => window.memoryIntegration.exportMemories(),
-    import: (data) => window.memoryIntegration.importMemories(data),
-    getSummary: (model) => window.memoryIntegration.getConversationSummary(model)
-};
+// Enhanced functions for better integration
+function enhancedSaveConversation() {
+    if (window.memoryIntegration) {
+        window.memoryIntegration.saveCurrentConversation();
+    }
+}
 
-// Debug helper
-window.debugMemory = () => {
-    console.log('=== Memory System Debug ===');
-    console.log('Memory count:', window.memorySystem?.memoryStore?.length || 0);
-    console.log('Recent memories:', window.memorySystem?.memoryStore?.slice(-5) || []);
-    console.log('Memory types:', window.memorySystem?.getStats() || {});
-    console.log('Integration status:', window.memoryIntegration?.isInitialized || false);
-};
+function enhancedLoadConversation() {
+    if (window.memoryIntegration) {
+        window.memoryIntegration.loadLastConversation();
+    }
+}
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = MemoryIntegration;
+}

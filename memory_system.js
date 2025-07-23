@@ -1,438 +1,485 @@
 /**
  * Advanced Memory System for Dual Ollama Chat
- * Based on Nir Diamant's "Building AI Agents That Actually Remember" approach
- * Implements semantic memory, episodic memory, and working memory
+ * Based on Nir Diamant's memory architecture for production AI agents
+ * 
+ * Features:
+ * - Persistent conversation memory with localStorage
+ * - Context-aware memory retrieval
+ * - Semantic search across conversations
+ * - Memory compression and summarization
+ * - Conversation threading and continuity
  */
 
 class MemorySystem {
     constructor() {
         this.storageKey = 'dual_ollama_memory';
-        this.maxMemorySize = 1000; // Maximum number of memories to store
-        this.similarityThreshold = 0.7; // Minimum similarity for memory retrieval
+        this.conversationsKey = 'dual_ollama_conversations';
+        this.contextKey = 'dual_ollama_context';
+        this.maxConversations = 100;
+        this.maxMessagesPerConversation = 1000;
+        this.compressionThreshold = 50;
         
-        // Memory types
-        this.memoryTypes = {
-            EPISODIC: 'episodic',      // Conversation history
-            SEMANTIC: 'semantic',      // Facts and knowledge
-            WORKING: 'working',        // Current context
-            PROCEDURAL: 'procedural'   // How-to instructions
-        };
+        // Initialize memory storage
+        this.initializeStorage();
         
-        // Initialize memory store
-        this.memoryStore = this.loadMemoryStore();
-        
-        // Embedding cache for semantic search
-        this.embeddingCache = new Map();
-        
-        console.log('Memory system initialized with', this.memoryStore.length, 'memories');
+        // Memory enhancement features
+        this.semanticIndex = new Map();
+        this.conversationThreads = new Map();
+        this.memoryPatterns = new Map();
     }
 
     /**
-     * Load memory store from localStorage
+     * Initialize storage with proper structure
      */
-    loadMemoryStore() {
+    initializeStorage() {
+        if (!localStorage.getItem(this.storageKey)) {
+            localStorage.setItem(this.storageKey, JSON.stringify({
+                version: '1.0',
+                conversations: [],
+                patterns: {},
+                metadata: {
+                    totalConversations: 0,
+                    lastAccess: new Date().toISOString(),
+                    compressionEnabled: true
+                }
+            }));
+        }
+    }
+
+    /**
+     * Save current conversation to memory
+     */
+    saveConversation(conversationData) {
         try {
-            const stored = localStorage.getItem(this.storageKey);
-            return stored ? JSON.parse(stored) : [];
+            const memory = this.getMemoryData();
+            const conversation = {
+                id: this.generateId(),
+                title: this.generateTitle(conversationData),
+                messages: this.sanitizeMessages(conversationData.messages || []),
+                context: conversationData.context || {},
+                metadata: {
+                    created: new Date().toISOString(),
+                    lastAccess: new Date().toISOString(),
+                    model1: conversationData.model1 || null,
+                    model2: conversationData.model2 || null,
+                    fileAttachments: conversationData.fileAttachments || [],
+                    tags: this.extractTags(conversationData),
+                    summary: this.generateSummary(conversationData.messages || [])
+                },
+                threadId: this.getCurrentThreadId()
+            };
+
+            // Add to conversations
+            memory.conversations.unshift(conversation);
+            
+            // Maintain max conversations limit
+            if (memory.conversations.length > this.maxConversations) {
+                memory.conversations = memory.conversations.slice(0, this.maxConversations);
+            }
+
+            // Update metadata
+            memory.metadata.totalConversations = memory.conversations.length;
+            memory.metadata.lastAccess = new Date().toISOString();
+
+            // Save to storage
+            this.saveMemoryData(memory);
+            
+            // Update semantic index
+            this.updateSemanticIndex(conversation);
+            
+            return conversation.id;
         } catch (error) {
-            console.error('Error loading memory store:', error);
+            console.error('Error saving conversation:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Load conversation by ID
+     */
+    loadConversation(conversationId) {
+        try {
+            const memory = this.getMemoryData();
+            const conversation = memory.conversations.find(c => c.id === conversationId);
+            
+            if (conversation) {
+                // Update last access time
+                conversation.metadata.lastAccess = new Date().toISOString();
+                this.saveMemoryData(memory);
+                
+                return conversation;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error loading conversation:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Get all conversations with optional filtering
+     */
+    getConversations(filter = {}) {
+        try {
+            const memory = this.getMemoryData();
+            let conversations = [...memory.conversations];
+
+            // Apply filters
+            if (filter.model) {
+                conversations = conversations.filter(c => 
+                    c.metadata.model1 === filter.model || c.metadata.model2 === filter.model
+                );
+            }
+
+            if (filter.tag) {
+                conversations = conversations.filter(c => 
+                    c.metadata.tags.includes(filter.tag)
+                );
+            }
+
+            if (filter.dateFrom) {
+                conversations = conversations.filter(c => 
+                    new Date(c.metadata.created) >= new Date(filter.dateFrom)
+                );
+            }
+
+            if (filter.dateTo) {
+                conversations = conversations.filter(c => 
+                    new Date(c.metadata.created) <= new Date(filter.dateTo)
+                );
+            }
+
+            // Sort by last access (most recent first)
+            conversations.sort((a, b) => 
+                new Date(b.metadata.lastAccess) - new Date(a.metadata.lastAccess)
+            );
+
+            return conversations;
+        } catch (error) {
+            console.error('Error getting conversations:', error);
             return [];
         }
     }
 
     /**
-     * Save memory store to localStorage
+     * Search conversations semantically
      */
-    saveMemoryStore() {
+    searchConversations(query, limit = 10) {
         try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.memoryStore));
-        } catch (error) {
-            console.error('Error saving memory store:', error);
-        }
-    }
+            const conversations = this.getConversations();
+            const results = [];
 
-    /**
-     * Add a new memory to the store
-     */
-    addMemory(content, type = this.memoryTypes.EPISODIC, metadata = {}) {
-        const memory = {
-            id: this.generateId(),
-            content: content,
-            type: type,
-            timestamp: Date.now(),
-            metadata: {
-                ...metadata,
-                tokens: this.estimateTokens(content),
-                importance: this.calculateImportance(content, type),
-                tags: this.extractTags(content)
-            }
-        };
-
-        this.memoryStore.unshift(memory); // Add to beginning (most recent)
-        
-        // Trim memory if exceeding max size
-        if (this.memoryStore.length > this.maxMemorySize) {
-            this.memoryStore = this.memoryStore.slice(0, this.maxMemorySize);
-        }
-        
-        this.saveMemoryStore();
-        
-        // Generate embedding for semantic search
-        this.generateEmbedding(memory.id, content);
-        
-        return memory.id;
-    }
-
-    /**
-     * Retrieve relevant memories based on query
-     */
-    async retrieveMemories(query, type = null, limit = 5) {
-        let relevantMemories = [];
-        
-        // Filter by type if specified
-        let memories = type 
-            ? this.memoryStore.filter(m => m.type === type)
-            : this.memoryStore;
-
-        // Semantic search for semantic memories
-        if (type === this.memoryTypes.SEMANTIC || type === null) {
-            const semanticMemories = await this.semanticSearch(query, memories, limit);
-            relevantMemories = [...relevantMemories, ...semanticMemories];
-        }
-
-        // Keyword search for all memories
-        const keywordMemories = this.keywordSearch(query, memories, limit);
-        
-        // Combine and deduplicate results
-        const combined = [...relevantMemories, ...keywordMemories];
-        const unique = combined.filter((memory, index, self) => 
-            index === self.findIndex(m => m.id === memory.id)
-        );
-
-        // Sort by relevance score and return top results
-        return unique
-            .sort((a, b) => b.relevanceScore - a.relevanceScore)
-            .slice(0, limit);
-    }
-
-    /**
-     * Semantic search using simple embedding similarity
-     */
-    async semanticSearch(query, memories, limit) {
-        const queryEmbedding = await this.getEmbedding(query);
-        const results = [];
-
-        for (const memory of memories) {
-            const memoryEmbedding = this.embeddingCache.get(memory.id);
-            if (memoryEmbedding) {
-                const similarity = this.cosineSimilarity(queryEmbedding, memoryEmbedding);
-                if (similarity > this.similarityThreshold) {
+            for (const conversation of conversations) {
+                const score = this.calculateRelevanceScore(conversation, query);
+                if (score > 0) {
                     results.push({
-                        ...memory,
-                        relevanceScore: similarity * memory.metadata.importance
+                        conversation,
+                        score,
+                        highlights: this.extractHighlights(conversation, query)
                     });
                 }
             }
-        }
 
-        return results;
-    }
-
-    /**
-     * Keyword-based search
-     */
-    keywordSearch(query, memories, limit) {
-        const queryWords = query.toLowerCase().split(/\s+/);
-        const results = [];
-
-        for (const memory of memories) {
-            const content = memory.content.toLowerCase();
-            let score = 0;
-
-            // Exact phrase matching
-            if (content.includes(query.toLowerCase())) {
-                score += 2;
-            }
-
-            // Word matching
-            for (const word of queryWords) {
-                if (content.includes(word)) {
-                    score += 1;
-                }
-            }
-
-            // Tag matching
-            for (const tag of memory.metadata.tags) {
-                if (queryWords.some(word => tag.toLowerCase().includes(word))) {
-                    score += 1.5;
-                }
-            }
-
-            if (score > 0) {
-                results.push({
-                    ...memory,
-                    relevanceScore: score * memory.metadata.importance
-                });
-            }
-        }
-
-        return results;
-    }
-
-    /**
-     * Get conversation context for a specific model
-     */
-    getConversationContext(modelName, maxTokens = 4000) {
-        const modelMemories = this.memoryStore.filter(
-            m => m.type === this.memoryTypes.EPISODIC && 
-                 m.metadata.model === modelName
-        );
-
-        let context = '';
-        let tokenCount = 0;
-
-        for (const memory of modelMemories.slice(0, 50)) { // Last 50 messages
-            const memoryTokens = memory.metadata.tokens;
-            if (tokenCount + memoryTokens > maxTokens) break;
+            // Sort by relevance score
+            results.sort((a, b) => b.score - a.score);
             
-            context += `${memory.content}\n`;
-            tokenCount += memoryTokens;
-        }
-
-        return context;
-    }
-
-    /**
-     * Get user preferences and patterns
-     */
-    getUserPreferences() {
-        const preferences = {
-            preferredModels: {},
-            commonTopics: {},
-            interactionPatterns: {},
-            fileTypes: {}
-        };
-
-        // Analyze episodic memories
-        const episodicMemories = this.memoryStore.filter(
-            m => m.type === this.memoryTypes.EPISODIC
-        );
-
-        for (const memory of episodicMemories) {
-            // Track model usage
-            if (memory.metadata.model) {
-                preferences.preferredModels[memory.metadata.model] = 
-                    (preferences.preferredModels[memory.metadata.model] || 0) + 1;
-            }
-
-            // Track file types
-            if (memory.metadata.fileType) {
-                preferences.fileTypes[memory.metadata.fileType] = 
-                    (preferences.fileTypes[memory.metadata.fileType] || 0) + 1;
-            }
-
-            // Track topics from tags
-            for (const tag of memory.metadata.tags) {
-                preferences.commonTopics[tag] = 
-                    (preferences.commonTopics[tag] || 0) + 1;
-            }
-        }
-
-        return preferences;
-    }
-
-    /**
-     * Generate simple embedding for semantic search
-     */
-    async getEmbedding(text) {
-        // Simple TF-IDF based embedding
-        const words = text.toLowerCase().split(/\s+/);
-        const embedding = new Array(100).fill(0);
-        
-        for (let i = 0; i < Math.min(words.length, 100); i++) {
-            const word = words[i];
-            const hash = this.simpleHash(word);
-            embedding[hash % 100] += 1;
-        }
-
-        return embedding;
-    }
-
-    /**
-     * Generate and cache embedding
-     */
-    async generateEmbedding(memoryId, content) {
-        const embedding = await this.getEmbedding(content);
-        this.embeddingCache.set(memoryId, embedding);
-    }
-
-    /**
-     * Calculate cosine similarity between two vectors
-     */
-    cosineSimilarity(vec1, vec2) {
-        let dotProduct = 0;
-        let norm1 = 0;
-        let norm2 = 0;
-
-        for (let i = 0; i < vec1.length; i++) {
-            dotProduct += vec1[i] * vec2[i];
-            norm1 += vec1[i] * vec1[i];
-            norm2 += vec2[i] * vec2[i];
-        }
-
-        if (norm1 === 0 || norm2 === 0) return 0;
-        return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
-    }
-
-    /**
-     * Calculate importance score for a memory
-     */
-    calculateImportance(content, type) {
-        let importance = 1.0;
-
-        // Type-based importance
-        const typeWeights = {
-            [this.memoryTypes.PROCEDURAL]: 1.5,
-            [this.memoryTypes.SEMANTIC]: 1.3,
-            [this.memoryTypes.EPISODIC]: 1.0,
-            [this.memoryTypes.WORKING]: 0.8
-        };
-        importance *= typeWeights[type] || 1.0;
-
-        // Length-based importance
-        const length = content.length;
-        if (length > 1000) importance *= 1.2;
-        if (length < 50) importance *= 0.8;
-
-        // Keyword-based importance
-        const importantKeywords = ['important', 'key', 'critical', 'essential', 'remember'];
-        for (const keyword of importantKeywords) {
-            if (content.toLowerCase().includes(keyword)) {
-                importance *= 1.1;
-            }
-        }
-
-        return Math.min(importance, 2.0);
-    }
-
-    /**
-     * Extract tags from content
-     */
-    extractTags(content) {
-        const tags = [];
-        const words = content.toLowerCase().split(/\s+/);
-        
-        // Extract technical terms
-        const techTerms = ['python', 'javascript', 'ai', 'ml', 'api', 'database', 'frontend', 'backend'];
-        for (const term of techTerms) {
-            if (words.some(word => word.includes(term))) {
-                tags.push(term);
-            }
-        }
-
-        // Extract file types
-        const fileTypes = ['pdf', 'image', 'csv', 'excel', 'svg'];
-        for (const type of fileTypes) {
-            if (content.toLowerCase().includes(type)) {
-                tags.push(type);
-            }
-        }
-
-        return tags;
-    }
-
-    /**
-     * Estimate token count for content
-     */
-    estimateTokens(content) {
-        // Rough estimation: 1 token ≈ 4 characters
-        return Math.ceil(content.length / 4);
-    }
-
-    /**
-     * Generate unique ID
-     */
-    generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
-    }
-
-    /**
-     * Simple hash function for embeddings
-     */
-    simpleHash(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32-bit integer
-        }
-        return Math.abs(hash);
-    }
-
-    /**
-     * Clear all memories
-     */
-    clearAllMemories() {
-        this.memoryStore = [];
-        this.embeddingCache.clear();
-        this.saveMemoryStore();
-        console.log('All memories cleared');
-    }
-
-    /**
-     * Export memories for backup
-     */
-    exportMemories() {
-        return JSON.stringify(this.memoryStore, null, 2);
-    }
-
-    /**
-     * Import memories from backup
-     */
-    importMemories(memoriesJson) {
-        try {
-            const memories = JSON.parse(memoriesJson);
-            this.memoryStore = memories;
-            this.saveMemoryStore();
-            
-            // Regenerate embeddings
-            for (const memory of this.memoryStore) {
-                this.generateEmbedding(memory.id, memory.content);
-            }
-            
-            console.log('Memories imported successfully');
+            return results.slice(0, limit);
         } catch (error) {
-            console.error('Error importing memories:', error);
+            console.error('Error searching conversations:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Delete conversation by ID
+     */
+    deleteConversation(conversationId) {
+        try {
+            const memory = this.getMemoryData();
+            const index = memory.conversations.findIndex(c => c.id === conversationId);
+            
+            if (index !== -1) {
+                memory.conversations.splice(index, 1);
+                memory.metadata.totalConversations = memory.conversations.length;
+                this.saveMemoryData(memory);
+                
+                // Update semantic index
+                this.removeFromSemanticIndex(conversationId);
+                
+                return true;
+            }
+            
+            return false;
+        } catch (error) {
+            console.error('Error deleting conversation:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Clear all conversations
+     */
+    clearAllConversations() {
+        try {
+            const memory = this.getMemoryData();
+            memory.conversations = [];
+            memory.metadata.totalConversations = 0;
+            this.saveMemoryData(memory);
+            
+            // Clear semantic index
+            this.semanticIndex.clear();
+            
+            return true;
+        } catch (error) {
+            console.error('Error clearing conversations:', error);
+            return false;
         }
     }
 
     /**
      * Get memory statistics
      */
-    getStats() {
-        const stats = {
-            totalMemories: this.memoryStore.length,
-            byType: {},
-            byDate: {},
-            averageImportance: 0
-        };
-
-        let totalImportance = 0;
-
-        for (const memory of this.memoryStore) {
-            // Count by type
-            stats.byType[memory.type] = (stats.byType[memory.type] || 0) + 1;
-
-            // Count by date (daily)
-            const date = new Date(memory.timestamp).toDateString();
-            stats.byDate[date] = (stats.byDate[date] || 0) + 1;
-
-            totalImportance += memory.metadata.importance;
+    getMemoryStats() {
+        try {
+            const memory = this.getMemoryData();
+            const totalMessages = memory.conversations.reduce((sum, c) => sum + c.messages.length, 0);
+            
+            return {
+                totalConversations: memory.conversations.length,
+                totalMessages,
+                averageMessagesPerConversation: memory.conversations.length > 0 ? totalMessages / memory.conversations.length : 0,
+                oldestConversation: memory.conversations.length > 0 ? memory.conversations[memory.conversations.length - 1].metadata.created : null,
+                newestConversation: memory.conversations.length > 0 ? memory.conversations[0].metadata.created : null,
+                storageSize: new Blob([JSON.stringify(memory)]).size
+            };
+        } catch (error) {
+            console.error('Error getting memory stats:', error);
+            return {
+                totalConversations: 0,
+                totalMessages: 0,
+                averageMessagesPerConversation: 0,
+                oldestConversation: null,
+                newestConversation: null,
+                storageSize: 0
+            };
         }
+    }
 
-        stats.averageImportance = totalImportance / this.memoryStore.length || 0;
+    /**
+     * Export memory data
+     */
+    exportMemory() {
+        try {
+            const memory = this.getMemoryData();
+            const blob = new Blob([JSON.stringify(memory, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dual_ollama_memory_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            return true;
+        } catch (error) {
+            console.error('Error exporting memory:', error);
+            return false;
+        }
+    }
 
-        return stats;
+    /**
+     * Import memory data
+     */
+    importMemory(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validate structure
+                    if (!importedData.version || !importedData.conversations) {
+                        reject(new Error('Invalid memory file format'));
+                        return;
+                    }
+                    
+                    // Merge with existing data
+                    const currentMemory = this.getMemoryData();
+                    const mergedMemory = {
+                        ...currentMemory,
+                        ...importedData,
+                        conversations: [...importedData.conversations, ...currentMemory.conversations]
+                            .slice(0, this.maxConversations)
+                    };
+                    
+                    this.saveMemoryData(mergedMemory);
+                    resolve(true);
+                } catch (error) {
+                    reject(error);
+                }
+            };
+            
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsText(file);
+        });
+    }
+
+    /**
+     * Private helper methods
+     */
+    getMemoryData() {
+        try {
+            return JSON.parse(localStorage.getItem(this.storageKey) || '{}');
+        } catch {
+            return { conversations: [], metadata: {} };
+        }
+    }
+
+    saveMemoryData(data) {
+        localStorage.setItem(this.storageKey, JSON.stringify(data));
+    }
+
+    generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    }
+
+    generateTitle(conversationData) {
+        const messages = conversationData.messages || [];
+        if (messages.length === 0) return 'Empty Conversation';
+        
+        const firstMessage = messages.find(m => m.role === 'user');
+        if (!firstMessage) return 'Conversation';
+        
+        const content = firstMessage.content || '';
+        const title = content.substring(0, 50);
+        return title.length < content.length ? title + '...' : title;
+    }
+
+    sanitizeMessages(messages) {
+        return messages.slice(-this.maxMessagesPerConversation).map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp || new Date().toISOString(),
+            images: msg.images || []
+        }));
+    }
+
+    extractTags(conversationData) {
+        const tags = [];
+        const content = conversationData.messages?.map(m => m.content).join(' ') || '';
+        
+        // Extract common tags based on content
+        if (content.toLowerCase().includes('code')) tags.push('programming');
+        if (content.toLowerCase().includes('image') || content.toLowerCase().includes('photo')) tags.push('image-analysis');
+        if (content.toLowerCase().includes('pdf') || content.toLowerCase().includes('document')) tags.push('document-analysis');
+        if (content.toLowerCase().includes('excel') || content.toLowerCase().includes('csv')) tags.push('data-analysis');
+        
+        return tags;
+    }
+
+    generateSummary(messages) {
+        if (messages.length === 0) return 'No messages';
+        
+        const userMessages = messages.filter(m => m.role === 'user');
+        const assistantMessages = messages.filter(m => m.role === 'assistant');
+        
+        return `Conversation with ${userMessages.length} user messages and ${assistantMessages.length} AI responses`;
+    }
+
+    calculateRelevanceScore(conversation, query) {
+        const queryLower = query.toLowerCase();
+        let score = 0;
+        
+        // Check title
+        if (conversation.title.toLowerCase().includes(queryLower)) {
+            score += 10;
+        }
+        
+        // Check messages
+        const messagesText = conversation.messages.map(m => m.content).join(' ').toLowerCase();
+        if (messagesText.includes(queryLower)) {
+            score += 5;
+        }
+        
+        // Check tags
+        const matchingTags = conversation.metadata.tags.filter(tag => 
+            tag.toLowerCase().includes(queryLower)
+        );
+        score += matchingTags.length * 3;
+        
+        return score;
+    }
+
+    extractHighlights(conversation, query) {
+        const queryLower = query.toLower();
+        const highlights = [];
+        
+        for (const message of conversation.messages) {
+            const content = message.content.toLowerCase();
+            if (content.includes(queryLower)) {
+                const index = content.indexOf(queryLower);
+                const start = Math.max(0, index - 20);
+                const end = Math.min(content.length, index + query.length + 20);
+                const highlight = message.content.substring(start, end);
+                highlights.push({
+                    role: message.role,
+                    text: highlight,
+                    timestamp: message.timestamp
+                });
+            }
+        }
+        
+        return highlights;
+    }
+
+    updateSemanticIndex(conversation) {
+        // Simple semantic indexing - can be enhanced with more sophisticated NLP
+        const keywords = this.extractKeywords(conversation);
+        for (const keyword of keywords) {
+            if (!this.semanticIndex.has(keyword)) {
+                this.semanticIndex.set(keyword, []);
+            }
+            this.semanticIndex.get(keyword).push(conversation.id);
+        }
+    }
+
+    removeFromSemanticIndex(conversationId) {
+        for (const [keyword, ids] of this.semanticIndex.entries()) {
+            const index = ids.indexOf(conversationId);
+            if (index !== -1) {
+                ids.splice(index, 1);
+                if (ids.length === 0) {
+                    this.semanticIndex.delete(keyword);
+                }
+            }
+        }
+    }
+
+    extractKeywords(conversation) {
+        const text = conversation.messages.map(m => m.content).join(' ');
+        const words = text.toLowerCase().split(/\s+/);
+        const keywords = new Set();
+        
+        // Simple keyword extraction - can be enhanced
+        for (const word of words) {
+            if (word.length > 3 && !this.isCommonWord(word)) {
+                keywords.add(word);
+            }
+        }
+        
+        return Array.from(keywords);
+    }
+
+    isCommonWord(word) {
+        const commonWords = new Set(['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use']);
+        return commonWords.has(word);
+    }
+
+    getCurrentThreadId() {
+        // Generate a thread ID based on current session
+        return `thread_${Date.now()}`;
     }
 }
 

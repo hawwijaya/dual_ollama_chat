@@ -88,6 +88,7 @@
                 <div class="title">🦙🦙 Dual Ollama Chat - by Kuatrinnus Wijaya</div>
             </div>            <div class="header-buttons">
                 <button class="config-btn" onclick="toggleConfig()">⚙️ Settings</button>
+                <button class="memory-btn" onclick="toggleMemoryPanel()" title="Memory Management">🧠 Memory</button>
                 <button class="new-chat-btn" onclick="startNewChat()" id="newChatBtn" title="Start a new conversation">🆕 New Chat</button>
             </div>
         </div>
@@ -154,6 +155,37 @@
                 <div class="config-group">
                     <label  class="inline-style-9">Active Models:</label>
                     <span id="activeModelsText"  class="inline-style-10">Model 1: None, Model 2: None</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="memory-panel" id="memoryPanel">
+            <div class="memory-header">
+                <h3>🧠 Memory Management</h3>
+                <button class="close-btn" onclick="toggleMemoryPanel()">✖</button>
+            </div>
+            <div class="memory-content">
+                <div class="memory-section">
+                    <h4>Conversation Memory</h4>
+                    <div class="memory-controls">
+                        <button class="btn" onclick="saveConversation()">💾 Save Current</button>
+                        <button class="btn" onclick="loadConversation()">📁 Load Saved</button>
+                        <button class="btn" onclick="clearMemory()">🗑️ Clear All</button>
+                    </div>
+                    <div class="memory-list" id="memoryList">
+                        <p>No saved conversations yet.</p>
+                    </div>
+                </div>
+                <div class="memory-section">
+                    <h4>Memory Settings</h4>
+                    <label>
+                        <input type="checkbox" id="autoSaveMemory" checked>
+                        Auto-save conversations
+                    </label>
+                    <label>
+                        <input type="checkbox" id="contextMemory" checked>
+                        Include context in memory
+                    </label>
                 </div>
             </div>
         </div>
@@ -262,5 +294,8 @@
     </div>
 
     <script src="chat_vision_understanding v2.js"></script>
+    <script src="memory_system.js"></script>
+    <script src="memory_ui.js"></script>
+    <script src="memory_integration.js"></script>
 </body>
 </html>

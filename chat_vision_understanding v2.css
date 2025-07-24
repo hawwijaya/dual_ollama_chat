@@ -296,23 +296,74 @@
             box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
         }
 
-/* Special styling for Detect Models button */
+/* Special styling for Detect Models icon - not a button */
 .detect-btn {
-    background: linear-gradient(135deg, #00695c, #004d40) !important;
-    color: white !important;
-    box-shadow: 0 3px 10px rgba(0, 105, 92, 0.3);
+    background: none !important;
+    color: #666 !important;
+    border: none !important;
+    padding: 12px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    width: 48px !important;
+    height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    font-size: 20px !important;
+    text-align: center !important;
+    box-shadow: none !important;
+    outline: none !important;
+    border-radius: 0 !important;
+    font-weight: normal !important;
+    min-height: auto !important;
+    gap: 0 !important;
 }
+
 .detect-btn:hover {
-    background: linear-gradient(135deg, #004d40, #00695c) !important;
-    box-shadow: 0 5px 15px rgba(0, 105, 92, 0.4);
-    transform: translateY(-1px);
+    color: #333 !important;
+    transform: scale(1.1) !important;
+    background: none !important;
+    box-shadow: none !important;
 }
+
+.detect-btn:active {
+    animation: detectClick 0.4s ease-in-out !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
 .detect-btn:disabled {
-    background: linear-gradient(135deg, #bdc3c7, #95a5a6) !important;
-    color: white !important;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 2px 5px rgba(189, 195, 199, 0.3);
+    color: #ccc !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    animation: none !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
+@keyframes detectClick {
+    0%, 100% {
+        transform: translateX(0) scale(1.1);
+    }
+    25% {
+        transform: translateX(-4px) scale(1.1);
+    }
+    75% {
+        transform: translateX(4px) scale(1.1);
+    }
+}
+
+@keyframes detectHover {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-4px);
+    }
+    75% {
+        transform: translateX(4px);
+    }
 }
         .btn:disabled {
             background: linear-gradient(135deg, #bdc3c7, #95a5a6);

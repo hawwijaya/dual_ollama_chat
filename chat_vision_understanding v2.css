@@ -60,37 +60,61 @@
 
         .header-buttons {
             display: flex;
-            gap: 10px;
+            gap: 15px;
             align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Unified header button styling */
+        .config-btn, .memory-btn, .new-chat-btn {
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            min-width: 120px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .config-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
+            background: linear-gradient(135deg, rgba(52, 152, 219, 0.9), rgba(41, 128, 185, 0.9));
         }
 
         .config-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, rgba(52, 152, 219, 1), rgba(41, 128, 185, 1));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .memory-btn {
+            background: linear-gradient(135deg, rgba(155, 89, 182, 0.9), rgba(142, 68, 173, 0.9));
+        }
+
+        .memory-btn:hover {
+            background: linear-gradient(135deg, rgba(155, 89, 182, 1), rgba(142, 68, 173, 1));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(155, 89, 182, 0.4);
         }
 
         .new-chat-btn {
-            background: #e67e22;
-            border: none;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
+            background: linear-gradient(135deg, rgba(230, 126, 34, 0.9), rgba(211, 84, 0, 0.9));
         }
 
         .new-chat-btn:hover {
-            background: #d35400;
+            background: linear-gradient(135deg, rgba(230, 126, 34, 1), rgba(211, 84, 0, 1));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 126, 34, 0.4);
         }
 
         .config-panel {
@@ -136,23 +160,46 @@
         }
 
         .btn {
-            background: #3498db;
+            background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 10px 18px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s;
-            font-weight: 500;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 3px 10px rgba(52, 152, 219, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 40px;
         }
 
         .btn:hover {
-            background: #2980b9;
+            background: linear-gradient(135deg, #2980b9, #1f618d);
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
         }
 
+/* Special styling for Detect Models button */
+.detect-btn {
+    background: linear-gradient(135deg, #00695c, #004d40);
+    color: white;
+    box-shadow: 0 3px 10px rgba(0, 105, 92, 0.3);
+}
+.detect-btn:hover {
+    background: linear-gradient(135deg, #004d40, #00695c);
+    box-shadow: 0 5px 15px rgba(0, 105, 92, 0.4);
+    transform: translateY(-1px);
+}
         .btn:disabled {
-            background: #bdc3c7;
+            background: linear-gradient(135deg, #bdc3c7, #95a5a6);
             cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 5px rgba(189, 195, 199, 0.3);
         }
 
         .chat-container {
@@ -824,7 +871,29 @@
 
 .inline-style-11 { display:none }
 
-.inline-style-12 { padding:0 12px;font-size:20px;line-height:1.2; }
+.inline-style-12 { 
+    padding: 10px 14px;
+    font-size: 18px;
+    line-height: 1.2; 
+    background: linear-gradient(135deg, #00695c, #004d40);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 10px rgba(26, 188, 156, 0.3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    min-width: 50px;
+}
+
+.inline-style-12:hover {
+    background: linear-gradient(135deg, #004d40, #00695c);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(26, 188, 156, 0.4);
+}
 
 .inline-style-13 { margin-top:8px;display:none; }
 
@@ -860,6 +929,45 @@
 /* Essential styles for proper functionality */
 .config-group textarea {
     box-sizing: border-box;
+}
+
+/* Responsive design for header buttons */
+@media (max-width: 768px) {
+    .header-buttons {
+        gap: 8px;
+    }
+    
+    .config-btn, .memory-btn, .new-chat-btn {
+        padding: 10px 16px;
+        font-size: 12px;
+        min-width: 100px;
+    }
+    
+    .header {
+        padding: 15px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+}
+/* Memory toggle container within settings panel */
+.config-header-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 480px) {
+    .header-buttons {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 10px;
+    }
+    
+    .config-btn, .memory-btn, .new-chat-btn {
+        flex: 1;
+        min-width: auto;
+    }
 }
 
 /* Active model highlighting styles */

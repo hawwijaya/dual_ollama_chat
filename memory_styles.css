@@ -388,7 +388,7 @@
 }
 
 /* Button Styles */
-.btn {
+.btn:not(.detect-btn) {
     padding: 8px 16px;
     border: none;
     border-radius: 20px;
@@ -399,7 +399,7 @@
     font-size: 0.9em;
 }
 
-.btn:hover {
+.btn:not(.detect-btn):hover {
     background: rgba(255, 255, 255, 0.3);
     transform: translateY(-1px);
 }

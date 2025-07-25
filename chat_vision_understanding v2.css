@@ -297,7 +297,7 @@
         }
 
 /* Special styling for Detect Models icon - not a button */
-.detect-btn {
+.btn.detect-btn {
     background: none !important;
     color: #666 !important;
     border: none !important;
@@ -320,20 +320,20 @@
     gap: 0 !important;
 }
 
-.detect-btn:hover {
+.btn.detect-btn:hover {
     color: #333 !important;
-    transform: scale(1.1) !important;
+    transform: scale(1.2) !important;
     background: none !important;
     box-shadow: none !important;
 }
 
-.detect-btn:active {
-    animation: detectClick 0.4s ease-in-out !important;
+.btn.detect-btn:active {
+    transform: scale(1.5) translateX(-10px) !important;
     background: none !important;
     box-shadow: none !important;
 }
 
-.detect-btn:disabled {
+.btn.detect-btn:disabled {
     color: #ccc !important;
     cursor: not-allowed !important;
     transform: none !important;
@@ -342,29 +342,6 @@
     box-shadow: none !important;
 }
 
-@keyframes detectClick {
-    0%, 100% {
-        transform: translateX(0) scale(1.1);
-    }
-    25% {
-        transform: translateX(-4px) scale(1.1);
-    }
-    75% {
-        transform: translateX(4px) scale(1.1);
-    }
-}
-
-@keyframes detectHover {
-    0%, 100% {
-        transform: translateX(0);
-    }
-    25% {
-        transform: translateX(-4px);
-    }
-    75% {
-        transform: translateX(4px);
-    }
-}
         .btn:disabled {
             background: linear-gradient(135deg, #bdc3c7, #95a5a6);
             cursor: not-allowed;

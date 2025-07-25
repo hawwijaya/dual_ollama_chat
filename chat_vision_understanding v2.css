@@ -106,27 +106,6 @@
             transform: rotate(-90deg);
         }
 
-        /* .memory-btn {
-            border: none;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            min-width: 120px;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        } */
-
 
 
         .memory-btn {
@@ -230,7 +209,7 @@
         }
 
         .config-panel {
-            background: #f8f9fa;
+            background: linear-gradient(-45deg, #77c3f3, #c1f4f1);;
             padding: 20px;
             border-bottom: 1px solid #dee2e6;
             display: none;

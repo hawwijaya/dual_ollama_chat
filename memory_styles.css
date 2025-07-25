@@ -241,7 +241,7 @@
 }
 
 .memory-preview-content {
-    background: white;
+    background: rgb(238, 207, 255);
     border-radius: 12px;
     max-width: 600px;
     max-height: 80vh;
@@ -278,7 +278,7 @@
 .memory-preview-messages {
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid #eee;
+    border: 1px solid #ef47f5;
     border-radius: 8px;
     padding: 10px;
 }
@@ -287,22 +287,22 @@
     margin-bottom: 10px;
     padding: 10px;
     border-radius: 8px;
-    background: #f8f9fa;
+    background: #ebaaf8;
 }
 
 .memory-preview-message.user {
-    background: #e3f2fd;
+    background: #67ccf7;
 }
 
 .memory-preview-message.assistant {
-    background: #f3e5f5;
+    background: #9ff9c8;
 }
 
 .memory-preview-actions {
     display: flex;
     gap: 10px;
     padding: 20px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #d770fa;
 }
 
 /* Notifications */

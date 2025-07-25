@@ -116,7 +116,9 @@
                     <input type="number" id="portInput" value="11434" placeholder="Port" title="Ollama server port number">
                 </div>
                 <button class="btn detect-btn" onclick="detectModels(event)" title="Detect available models from Ollama server">🔍</button>
-                <button class="memory-btn" onclick="toggleMemoryPanel()" title="Memory Management">🧠 Memory</button>
+                <div class="memory-btn-container">
+                    <button class="memory-btn" onclick="toggleMemoryPanel()" title="Memory Management">🧠</button>
+                </div>
             </div>
 
             <div class="config-row">

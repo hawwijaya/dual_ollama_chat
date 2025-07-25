@@ -1,0 +1,512 @@
+/**
+ * Memory System Styles
+ * Modern, responsive styling for the memory management interface
+ */
+
+.memory-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 400px;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: right 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.memory-panel.active {
+    right: 0;
+}
+
+.memory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.memory-header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.5em;
+    font-weight: 600;
+}
+
+.memory-content {
+    padding: 20px;
+}
+
+.memory-section {
+    margin-bottom: 30px;
+}
+
+.memory-section h4 {
+    color: white;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.memory-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.memory-controls .btn {
+    padding: 8px 16px;
+    font-size: 0.9em;
+    border-radius: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.memory-controls .btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.memory-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.memory-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.memory-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.memory-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.memory-item-header h5 {
+    margin: 0;
+    color: white;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.memory-item-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.memory-item-content p {
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.memory-item-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.tag {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+}
+
+.memory-item-models {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.memory-item-models .model {
+    background: rgba(102, 126, 234, 0.3);
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+}
+
+.memory-item-actions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.memory-item-actions .btn {
+    padding: 5px 10px;
+    font-size: 0.8em;
+    border-radius: 15px;
+}
+
+.memory-search {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.memory-search input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.9em;
+}
+
+.memory-search input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.memory-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.memory-filters select {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.9em;
+}
+
+.memory-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.memory-actions .btn {
+    flex: 1;
+    padding: 10px;
+    font-size: 0.9em;
+}
+
+/* Memory Settings */
+.memory-section label {
+    display: flex;
+    align-items: center;
+    color: white;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.memory-section input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Memory Preview Modal */
+.memory-preview-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.memory-preview-content {
+    background: rgb(238, 207, 255);
+    border-radius: 12px;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.memory-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.memory-preview-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.memory-preview-body {
+    padding: 20px;
+}
+
+.memory-preview-meta {
+    margin-bottom: 20px;
+}
+
+.memory-preview-meta p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.memory-preview-messages {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ef47f5;
+    border-radius: 8px;
+    padding: 10px;
+}
+
+.memory-preview-message {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 8px;
+    background: #ebaaf8;
+}
+
+.memory-preview-message.user {
+    background: #67ccf7;
+}
+
+.memory-preview-message.assistant {
+    background: #9ff9c8;
+}
+
+.memory-preview-actions {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    border-top: 1px solid #d770fa;
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 3000;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification.success {
+    background: #4caf50;
+}
+
+.notification.error {
+    background: #f44336;
+}
+
+.notification.info {
+    background: #2196f3;
+}
+
+/* Search Results */
+.search-highlight {
+    background: rgba(255, 235, 59, 0.3);
+    padding: 5px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .memory-panel {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .memory-controls {
+        flex-direction: column;
+    }
+    
+    .memory-item-actions {
+        flex-direction: column;
+    }
+    
+    .memory-filters {
+        flex-direction: column;
+    }
+}
+
+/* Scrollbar Styling */
+.memory-list::-webkit-scrollbar,
+.memory-preview-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.memory-list::-webkit-scrollbar-track,
+.memory-preview-messages::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.memory-list::-webkit-scrollbar-thumb,
+.memory-preview-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.memory-list::-webkit-scrollbar-thumb:hover,
+.memory-preview-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* Button Styles */
+.btn:not(.detect-btn) {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9em;
+}
+
+.btn:not(.detect-btn):hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn.danger {
+    background: rgba(244, 67, 54, 0.7);
+}
+
+.btn.danger:hover {
+    background: rgba(244, 67, 54, 0.9);
+}
+
+/* Close Button */
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Memory Button in Header */
+.memory-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2em;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.memory-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Auto-save indicator */
+.auto-save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.auto-save-indicator.show {
+    opacity: 1;
+}
+
+/* Loading States */
+.memory-loading {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 20px;
+}
+
+.memory-loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Empty State */
+.memory-empty {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 40px 20px;
+}
+
+.memory-empty::before {
+    content: '🧠';
+    display: block;
+    font-size: 3em;
+    margin-bottom: 10px;
+    opacity: 0.5;
+}

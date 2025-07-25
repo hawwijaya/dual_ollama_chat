@@ -305,10 +305,10 @@ async function detectModels(event = null) {
     let originalText = '';
     
     if (event && event.target) {
-        btn = event.target;
-        originalText = btn.textContent;
-        btn.textContent = '🔍 Detecting...';
-        btn.disabled = true;
+        // btn = event.target;
+        // originalText = btn.textContent;
+        // btn.textContent = '🔍 Detecting...';
+        // btn.disabled = true;
     }
 
     try {

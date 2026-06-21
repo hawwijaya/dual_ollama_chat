@@ -1,0 +1,142 @@
+{
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\chat_vision_understanding v2.js": {
+    "mtime": 1781434507.175541,
+    "ast_hash": "aa7b83a04d4818f9c8a2da03bf7c55dd",
+    "semantic_hash": "aa7b83a04d4818f9c8a2da03bf7c55dd"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\fix_memory_button.py": {
+    "mtime": 1781434507.2072403,
+    "ast_hash": "98b61ce4ca12ad9f67b31d584afff4df",
+    "semantic_hash": "98b61ce4ca12ad9f67b31d584afff4df"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\lib\\highlight.min.js": {
+    "mtime": 1781434507.2240973,
+    "ast_hash": "ce552ffc8630869b9d3a215fca292098",
+    "semantic_hash": "ce552ffc8630869b9d3a215fca292098"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\lib\\marked.min.js": {
+    "mtime": 1781434507.2240973,
+    "ast_hash": "8230bbc7be5950ddb6d90f86884e77a2",
+    "semantic_hash": "8230bbc7be5950ddb6d90f86884e77a2"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\lib\\mathjax-tex-mml-chtml.js": {
+    "mtime": 1781434507.2332652,
+    "ast_hash": "2e00d51c98dbb338e81054f240e1deb2",
+    "semantic_hash": "2e00d51c98dbb338e81054f240e1deb2"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\manifest.json": {
+    "mtime": 1781434507.2865736,
+    "ast_hash": "6bdb35fcded8ac26e940773be7656fb2",
+    "semantic_hash": "6bdb35fcded8ac26e940773be7656fb2"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\memory_integration.js": {
+    "mtime": 1781434507.2865736,
+    "ast_hash": "0af515c3ff8fed54bc6c135efb783d1f",
+    "semantic_hash": "0af515c3ff8fed54bc6c135efb783d1f"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\memory_system.js": {
+    "mtime": 1781434507.3060718,
+    "ast_hash": "2f32e6ee46064e665e4cb517d1ad1f00",
+    "semantic_hash": "2f32e6ee46064e665e4cb517d1ad1f00"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\memory_ui.js": {
+    "mtime": 1781434507.3110273,
+    "ast_hash": "a24ff0653b28ae04cb51ed93e92fdcac",
+    "semantic_hash": "a24ff0653b28ae04cb51ed93e92fdcac"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\ACTIVATE_BUTTON_FIX.md": {
+    "mtime": 1781434507.0187128,
+    "ast_hash": "a4e9a9e3cd6711367e16adf7c30f35e7",
+    "semantic_hash": "a4e9a9e3cd6711367e16adf7c30f35e7"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\Dual_ollama_Chat.html": {
+    "mtime": 1781434507.0187128,
+    "ast_hash": "740c818f810ccfb17e19d7a252895c01",
+    "semantic_hash": "740c818f810ccfb17e19d7a252895c01"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\FUNCTIONALITY_REVIEW.md": {
+    "mtime": 1781434507.0187128,
+    "ast_hash": "efe9d2e3ceb02fbad89618095821c2ca",
+    "semantic_hash": "efe9d2e3ceb02fbad89618095821c2ca"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\MEMORY_SYSTEM_DOCUMENTATION.md": {
+    "mtime": 1781434507.1526232,
+    "ast_hash": "4248ad2942119961f566c3ce94957bf8",
+    "semantic_hash": "4248ad2942119961f566c3ce94957bf8"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\PRD_Dual_Ollama_Chat.md": {
+    "mtime": 1781434507.1596525,
+    "ast_hash": "8a5d181e3e0def5c50043cd193dc51a0",
+    "semantic_hash": "8a5d181e3e0def5c50043cd193dc51a0"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\README.md": {
+    "mtime": 1781434507.1627839,
+    "ast_hash": "b8b4d8ff9da832604900292c947c5b2c",
+    "semantic_hash": "b8b4d8ff9da832604900292c947c5b2c"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\feature_demo.html": {
+    "mtime": 1781434507.1914265,
+    "ast_hash": "46bc1fe76fbed77616fd5b2df081270b",
+    "semantic_hash": "46bc1fe76fbed77616fd5b2df081270b"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\format_feature_demo.html": {
+    "mtime": 1781434507.2092595,
+    "ast_hash": "327c702312cadd7d72ae38ba1910fceb",
+    "semantic_hash": "327c702312cadd7d72ae38ba1910fceb"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\mathjax_test.html": {
+    "mtime": 1781434507.2865736,
+    "ast_hash": "170afa0152d2bb7a01ac74740ca3610c",
+    "semantic_hash": "170afa0152d2bb7a01ac74740ca3610c"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\test_activate_button_fix.html": {
+    "mtime": 1781434507.3235428,
+    "ast_hash": "ea5d6bc313a53ef9e678d687cd4a3914",
+    "semantic_hash": "ea5d6bc313a53ef9e678d687cd4a3914"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\test_format_feature.md": {
+    "mtime": 1781434507.3344815,
+    "ast_hash": "d15c35f87cc2ff045cf9f3ed8cd97618",
+    "semantic_hash": "d15c35f87cc2ff045cf9f3ed8cd97618"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\test_image_scaling.html": {
+    "mtime": 1781434507.3384817,
+    "ast_hash": "7aaedb0aa67a5182631c25bd2dd57013",
+    "semantic_hash": "7aaedb0aa67a5182631c25bd2dd57013"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\test_mathjax_fix.html": {
+    "mtime": 1781434507.343492,
+    "ast_hash": "ccb0ec819010a730809144f98fa73459",
+    "semantic_hash": "ccb0ec819010a730809144f98fa73459"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\Improving-Your-Statistical-Inferences.pdf": {
+    "mtime": 1781434507.1475947,
+    "ast_hash": "b75ca3999532abf8ff2a5e04c975f0db",
+    "semantic_hash": "b75ca3999532abf8ff2a5e04c975f0db"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\chapter_Transformers.pdf": {
+    "mtime": 1781434507.175541,
+    "ast_hash": "7df49c277d36dc36428d5e0c0bd12384",
+    "semantic_hash": "7df49c277d36dc36428d5e0c0bd12384"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\47312583-697cfe00-d65a-11e8-930a-e15fd67a5bb1.png": {
+    "mtime": 1781434507.0187128,
+    "ast_hash": "4a3dfa764d33002acb5fe279120419d3",
+    "semantic_hash": "4a3dfa764d33002acb5fe279120419d3"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\chat_icon.svg": {
+    "mtime": 1781434507.175541,
+    "ast_hash": "4cec687ba65284a6ce6dca62e590eec2",
+    "semantic_hash": "4cec687ba65284a6ce6dca62e590eec2"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\handwritingrecognition4-800x426.png": {
+    "mtime": 1781434507.2092595,
+    "ast_hash": "ac0826aff6285b55788cf548f1d56882",
+    "semantic_hash": "ac0826aff6285b55788cf548f1d56882"
+  },
+  "C:\\Users\\kuatrinnus.wijaya\\dual_ollama_chat\\sample_pdf.png": {
+    "mtime": 1781434507.3205407,
+    "ast_hash": "dee2fa642fbfef2a05511dddfe82bee9",
+    "semantic_hash": "dee2fa642fbfef2a05511dddfe82bee9"
+  }
+}
